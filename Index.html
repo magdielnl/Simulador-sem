@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Simulador Dúo SEM 2026 — Nivel Examen IMR</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  :root {
+    --guinda: #691C32;
+    --guinda-dark: #4E1324;
+    --guinda-light: #FDF2F5;
+    --dorado: #BC955C;
+    --dorado-light: #FBF7F0;
+    --verde: #10312B;
+    --verde-ok: #15803D;
+    --verde-bg: #ECFDF5;
+    --rojo-err: #B91C1C;
+    --rojo-bg: #FEF2F2;
+    --azul-info: #1D4ED8;
+    --azul-bg: #EFF6FF;
+    --bg: #F3F4F6;
+    --card: #FFFFFF;
+    --text: #111827;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.38;
+  }
+
+  /* Barra Superior Fija Ultra-Compacta (Sticky HUD) */
+  .sticky-hud {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: linear-gradient(135deg, var(--guinda) 0%, var(--guinda-dark) 100%);
+    color: #fff;
+    border-bottom: 3px solid var(--dorado);
+    padding: 6px 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+  .hud-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 0.78rem;
+  }
+  .hud-title {
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .conn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.15);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #FBBF24; }
+  .dot.online { background: #34D399; box-shadow: 0 0 6px #34D399; }
+  .dot.offline { background: #F87171; }
+
+  /* Mini Marcador Integrado dentro del HUD cuando inicia el quiz */
+  .hud-scoreboard {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(255,255,255,0.16);
+  }
+  .hud-player {
+    background: rgba(255,255,255,0.1);
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    font-size: 0.78rem;
+  }
+  .hud-player.active {
+    background: #fff;
+    color: var(--guinda);
+    border-color: var(--dorado);
+    font-weight: 800;
+  }
+  .hud-player .p-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hud-player .p-pts {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .hud-center {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .hud-timer {
+    font-family: monospace;
+    background: rgba(0,0,0,0.35);
+    padding: 1px 6px;
+    border-radius: 5px;
+    font-size: 0.74rem;
+    display: inline-block;
+    margin-top: 2px;
+  }
+
+  .container {
+    max-width: 820px;
+    margin: 10px auto;
+    padding: 0 10px 28px;
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 640px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 3px;
+    color: #374151;
+  }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid #D1D5DB;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #fff;
+    color: var(--text);
+  }
+  input:focus, select:focus { outline: none; border-color: var(--guinda); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 9px 13px;
+    border-radius: 9px;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .btn:disabled { opacity: 0.42; cursor: not-allowed; }
+  .btn-primary { background: var(--guinda); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--guinda-dark); }
+  .btn-gold { background: var(--dorado); color: #fff; }
+  .btn-green { background: var(--verde); color: #fff; }
+  .btn-outline { background: #fff; color: var(--guinda); border: 1.5px solid var(--guinda); }
+  .btn-ghost { background: #F3F4F6; color: #374151; border: 1px solid #D1D5DB; }
+
+  .mode-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 6px 10px;
+    border-radius: 7px;
+    border: 1.5px solid var(--border);
+    background: #F9FAFB;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: #4B5563;
+  }
+  .tab-btn.active { background: var(--guinda); color: #fff; border-color: var(--guinda); }
+
+  .room-box {
+    background: var(--dorado-light);
+    border: 1.5px dashed var(--dorado);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    margin-top: 10px;
+  }
+  .room-code {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: var(--guinda);
+    font-family: monospace;
+    margin: 4px 0;
+  }
+
+  /* Banner compacto de turno */
+  .turn-strip {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .turn-strip.my-turn { background: var(--verde-bg); color: var(--verde-ok); border: 1px solid #86EFAC; }
+  .turn-strip.spectator-turn { background: var(--azul-bg); color: var(--azul-info); border: 1px solid #93C5FD; }
+
+  .q-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #F3F4F6;
+    color: #374151;
+  }
+  .badge-double { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+  .badge-guinda { background: var(--guinda-light); color: var(--guinda); }
+
+  .q-text {
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 4px 0 10px;
+  }
+
+  .options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .opt-btn {
+    width: 100%;
+    text-align: left;
+    padding: 9px 11px;
+    border-radius: 9px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    font-size: 0.88rem;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    transition: all 0.1s ease;
+  }
+  .opt-btn:hover:not(:disabled) { border-color: var(--dorado); background: #FFFDF9; }
+  .opt-btn:disabled { cursor: not-allowed; }
+  .opt-letter {
+    min-width: 23px;
+    height: 23px;
+    border-radius: 6px;
+    background: #F3F4F6;
+    color: #374151;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    margin-top: 1px;
+  }
+  .opt-btn.selected { border-color: var(--guinda); background: var(--guinda-light); }
+  .opt-btn.selected .opt-letter { background: var(--guinda); color: #fff; }
+  .opt-btn.correct { border-color: var(--verde-ok); background: var(--verde-bg); }
+  .opt-btn.correct .opt-letter { background: var(--verde-ok); color: #fff; }
+  .opt-btn.wrong { border-color: var(--rojo-err); background: var(--rojo-bg); }
+  .opt-btn.wrong .opt-letter { background: var(--rojo-err); color: #fff; }
+
+  .feedback-box {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    border-left: 4px solid var(--guinda);
+    background: #F9FAFB;
+    font-size: 0.84rem;
+  }
+  .feedback-box.ok { border-left-color: var(--verde-ok); background: var(--verde-bg); }
+  .feedback-box.bad { border-left-color: var(--rojo-err); background: var(--rojo-bg); }
+
+  /* Barra de acciones compacta */
+  .actions-bar {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav-group, .tool-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .hidden { display: none !important; }
+  .small-note { font-size: 0.78rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="sticky-hud">
+  <div class="hud-top">
+    <div class="hud-title">Simulador Dúo SEM 2026 · Nivel Examen IMR</div>
+    <div class="conn-pill">
+      <span id="connDot" class="dot"></span>
+      <span id="connStatus">Sin sala</span>
+    </div>
+  </div>
+
+  <!-- Marcador fijo superior (visible siempre sin scrollear durante el quiz) -->
+  <div id="hudScoreboard" class="hud-scoreboard hidden">
+    <div id="hudP1" class="hud-player">
+      <span class="p-name" id="hudP1Name">Magdiel</span>
+      <span class="p-pts" id="hudP1Score">0/0</span>
+    </div>
+    <div class="hud-center">
+      <div id="hudProgress">1 / 80</div>
+      <div class="hud-timer" id="debateTimer">00:00</div>
+    </div>
+    <div id="hudP2" class="hud-player">
+      <span class="p-name" id="hudP2Name">Benigno</span>
+      <span class="p-pts" id="hudP2Score">0/0</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- PANTALLA 1: LOBBY -->
+  <div id="lobbyView" class="card">
+    <div class="mode-tabs">
+      <button class="tab-btn active" id="tabHost" onclick="switchLobbyTab('host')">1. Crear Sala</button>
+      <button class="tab-btn" id="tabJoin" onclick="switchLobbyTab('join')">2. Unirme a Sala</button>
+      <button class="tab-btn" id="tabLocal" onclick="switchLobbyTab('local')">3. 1 Pantalla (Meet/Zoom)</button>
+    </div>
+
+    <!-- CREAR SALA -->
+    <div id="panelHost">
+      <div class="grid-2">
+        <div>
+          <label>Tu nombre (Anfitrión)</label>
+          <input type="text" id="hostName" value="Magdiel" />
+        </div>
+        <div>
+          <label>Perfil RTA 2026</label>
+          <select id="hostRole">
+            <option value="Administración" selected>Administración</option>
+            <option value="Asuntos Consulares, Comunidades y Protección">Asuntos Consulares, Comunidades y Protección</option>
+            <option value="Tecnologías de la Información y Digitalización">Tecnologías de la Información y Digitalización</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label>Bloque de estudio (144 reactivos endurecidos tipo examen IMR)</label>
+        <select id="topicSelect">
+          <option value="b2_lsem" selected>Bloque 2: LSEM y RLSEM — Casos Prácticos (80 preguntas)</option>
+          <option value="b1_marco">Bloque 1: Marco Jurídico e Institucional (12 preguntas)</option>
+          <option value="b3_coyuntura">Bloque 3: PND, PSRE, Movilidad, T-MEC, CELAC y PEF (16 preguntas)</option>
+          <option value="b4_diplomatico">Bloque 4: Derecho Diplomático — CVRD 1961 y Asilo (12 preguntas)</option>
+          <option value="b5_consular">Bloque 5: Derecho Consular — CVRC 1963 y Avena (12 preguntas)</option>
+          <option value="b6_espanol">Bloque 6: Español Escrito — Ortografía y Gramática (12 preguntas)</option>
+          <option value="all_tronco">Simulacro Integral Tronco Común (144 preguntas)</option>
+        </select>
+      </div>
+
+      <div class="grid-2" style="margin-top:10px;">
+        <div>
+          <label>Orden</label>
+          <select id="orderSelect">
+            <option value="seq" selected>Secuencial por subtema</option>
+            <option value="rand">Aleatorio (tipo examen)</option>
+          </select>
+        </div>
+        <div>
+          <label>Primer turno</label>
+          <select id="firstTurnSelect">
+            <option value="random" selected>Sorteo aleatorio</option>
+            <option value="host">Anfitrión (Magdiel)</option>
+            <option value="guest">Invitado (Beni)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn btn-primary" id="btnCreateRoom" onclick="createRoom()">Crear Sala Sincronizada</button>
+      </div>
+
+      <div id="hostRoomBox" class="room-box hidden">
+        <div class="small-note">Código de sala (no cierres ni recargues esta pestaña mientras entra Beni):</div>
+        <div class="room-code" id="displayRoomCode">----</div>
+        <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:8px 0;">
+          <button class="btn btn-outline" onclick="copyInviteLink()">Copiar link directo</button>
+          <button class="btn btn-ghost" onclick="copyRoomCode()">Copiar código</button>
+        </div>
+        <div id="guestStatusText" style="font-weight:700; color:var(--guinda); font-size:0.84rem;">
+          Esperando conexión del invitado...
+        </div>
+        <div style="margin-top:10px;">
+          <button class="btn btn-green" id="btnStartSynced" onclick="startSyncedQuiz()" disabled>Iniciar Cuestionario</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- UNIRSE A SALA -->
+    <div id="panelJoin" class="hidden">
+      <div class="grid-2">
+        <div>
+          <label>Tu nombre (Invitado)</label>
+          <input type="text" id="guestName" value="Benigno" />
+        </div>
+        <div>
+          <label>Perfil RTA 2026</label>
+          <select id="guestRole">
+            <option value="Asuntos Consulares, Comunidades y Protección" selected>Asuntos Consulares, Comunidades y Protección</option>
+            <option value="Administración">Administración</option>
+            <option value="Tecnologías de la Información y Digitalización">Tecnologías de la Información y Digitalización</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label>Código de Sala</label>
+        <input type="text" id="joinCodeInput" placeholder="Ej. SEM4821" style="text-transform:uppercase; font-weight:800; letter-spacing:2px;" />
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btnJoinRoom" onclick="joinRoom()">Conectar a la Sala</button>
+      </div>
+      <div id="joinStatusText" class="small-note" style="margin-top:8px; font-weight:700;"></div>
+    </div>
+
+    <!-- MODO 1 PANTALLA -->
+    <div id="panelLocal" class="hidden">
+      <div class="grid-2">
+        <div>
+          <label>Jugador 1</label>
+          <input type="text" id="localP1Name" value="Magdiel" />
+        </div>
+        <div>
+          <label>Jugador 2</label>
+          <input type="text" id="localP2Name" value="Benigno" />
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <label>Bloque de estudio</label>
+        <select id="localTopicSelect">
+          <option value="b2_lsem" selected>Bloque 2: LSEM y RLSEM — Casos Prácticos (80 preguntas)</option>
+          <option value="b1_marco">Bloque 1: Marco Jurídico e Institucional (12 preguntas)</option>
+          <option value="b3_coyuntura">Bloque 3: PND, PSRE, Movilidad, T-MEC, CELAC y PEF (16 preguntas)</option>
+          <option value="b4_diplomatico">Bloque 4: Derecho Diplomático — CVRD 1961 y Asilo (12 preguntas)</option>
+          <option value="b5_consular">Bloque 5: Derecho Consular — CVRC 1963 y Avena (12 preguntas)</option>
+          <option value="b6_espanol">Bloque 6: Español Escrito — Ortografía y Gramática (12 preguntas)</option>
+          <option value="all_tronco">Simulacro Integral Tronco Común (144 preguntas)</option>
+        </select>
+      </div>
+      <div style="margin-top:12px;">
+        <button class="btn btn-primary" onclick="startLocalQuiz()">Iniciar en 1 Pantalla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 2: CUESTIONARIO COMPACTO -->
+  <div id="quizView" class="hidden">
+    <div id="turnBanner" class="turn-strip my-turn">
+      <span id="turnBannerText">Turno activo</span>
+      <span id="flagBadge" class="badge hidden" style="background:#FEF3C7; color:#92400E;">Repaso</span>
+    </div>
+
+    <div class="card">
+      <div class="q-meta">
+        <span class="badge badge-guinda" id="qIdBadge">LSEM-01</span>
+        <span class="badge" id="qSubBadge">2.1 Integración del SEM</span>
+        <span class="badge badge-double hidden" id="qDoubleBadge">Marque DOS opciones</span>
+        <span class="badge hidden" id="reviewModeBadge" style="background:#E0E7FF; color:#3730A3;">Vista de revisión</span>
+      </div>
+
+      <div class="q-text" id="qText">Cargando...</div>
+
+      <div class="options-list" id="optionsList"></div>
+
+      <div id="feedbackBox" class="feedback-box hidden">
+        <div id="feedbackTitle" style="font-weight:800; margin-bottom:3px;"></div>
+        <div id="feedbackRef"></div>
+      </div>
+
+      <div class="actions-bar">
+        <div class="nav-group">
+          <button class="btn btn-ghost" id="btnPrev" onclick="prevQuestion()" disabled>&larr; Anterior</button>
+          <button class="btn btn-primary" id="btnCheck" onclick="checkAnswer()" disabled>Comprobar</button>
+          <button class="btn btn-green hidden" id="btnNext" onclick="nextQuestion()">Siguiente &rarr;</button>
+        </div>
+
+        <div class="tool-group">
+          <button class="btn btn-gold" id="btnTimer" onclick="toggleDebateTimer()">3:00</button>
+          <button class="btn btn-outline" id="btnFlag" onclick="toggleFlag()">Marcar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 3: RESUMEN -->
+  <div id="summaryView" class="card hidden">
+    <h3 style="margin-top:0; color:var(--guinda);">Resultados de la Sesión</h3>
+    <div id="summaryStats" style="margin-bottom:12px;"></div>
+    <div id="flaggedList" style="margin-bottom:14px; font-size:0.86rem;"></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="copySummaryWhatsApp()">Copiar bitácora WhatsApp</button>
+      <button class="btn btn-outline" onclick="location.reload()">Nueva sesión</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const QUESTIONS_DB = {"b2_lsem": {"title": "Bloque 2: Servicio Exterior Mexicano (LSEM y RLSEM) — 80 Reactivos Nivel Examen", "short": "B2 · LSEM (80 preg.)", "desc": "Reactivos endurecidos tipo caso práctico IMR sobre los 10 subtemas del SEM.", "questions": [{"id": "LSEM-01", "sub": "2.1 Integración del SEM", "type": "single", "q": "Conforme al artículo 1 de la LSEM, ¿qué naturaleza jurídica y adscripción tiene el Servicio Exterior Mexicano?", "opts": ["Es un órgano administrativo desconcentrado de la SRE con autonomía técnica y presupuestaria.", "Es el cuerpo permanente de personas servidoras públicas encargado específicamente de representar al Estado en el extranjero y responsable de ejecutar la política exterior, que depende del Ejecutivo Federal.", "Es un organismo descentralizado sectorizado a la SRE integrado exclusivamente por personal diplomático de carrera.", "Es el conjunto de funcionarios de carrera, temporales, asimilados y honorarios adscritos a embajadas y consulados."], "ans": [1], "ref": "LSEM, arts. 1 y 1-BIS. Es cuerpo permanente de servidores públicos dependiente del Ejecutivo Federal y dirigido por la SRE; los cónsules honorarios NO integran el SEM (art. 22)."}, {"id": "LSEM-02", "sub": "2.1 Integración del SEM", "type": "double", "q": "Marque DOS opciones. En una Embajada de México laboran: (1) una Agregada Administrativa 'C' de carrera, (2) un Agregado Naval gestionado por SEMAR, (3) una auxiliar administrativa contratada bajo la ley laboral local, y (4) un Cónsul Honorario en otra ciudad. Conforme a los arts. 2, 3 y 22 de la LSEM, ¿quiénes SÍ integran el SEM?", "opts": ["La Agregada Administrativa 'C' de carrera (rama Técnico-Administrativa).", "El Agregado Naval gestionado por SEMAR (en calidad de personal asimilado).", "La auxiliar administrativa contratada bajo la ley laboral del país sede.", "El Cónsul Honorario designado por la Secretaría."], "ans": [0, 1], "ref": "LSEM, arts. 2, 3, 8 y 22; RLSEM, art. 27. Integran el SEM el personal de carrera, temporal y asimilado; ni el personal local ni los cónsules honorarios forman parte del SEM."}, {"id": "LSEM-03", "sub": "2.1 Integración del SEM", "type": "single", "q": "Respecto al personal temporal del SEM (art. 7 de la LSEM), ¿cuál de las siguientes afirmaciones es jurídicamente exacta?", "opts": ["Puede ser designado por acuerdo del Presidente o del Secretario de Relaciones Exteriores por un plazo que no excederá de 6 años, y al término de éste puede incorporarse al personal de carrera previa evaluación de desempeño.", "Es designado por acuerdo del Presidente o del Secretario por un plazo que no excederá de 6 años para funciones específicas, y no podrá incorporarse al personal de carrera sino mediante el concurso público de ingreso.", "Solo puede ser nombrado por el Presidente con ratificación obligatoria del Senado en todos los casos.", "Adquiere inamovilidad y antigüedad absoluta en el escalafón tras cumplir tres años continuos en el exterior."], "ans": [1], "ref": "LSEM, art. 7. El plazo máximo es de 6 años y la única vía de ingreso al personal de carrera es el concurso público general (art. 28)."}, {"id": "LSEM-04", "sub": "2.1 Integración del SEM", "type": "single", "q": "Una funcionaria de la Secretaría de Economía es comisionada a una Misión Permanente de México ante un organismo internacional como personal asimilado (art. 8 LSEM). Durante su comisión:", "opts": ["Queda sujeta únicamente al reglamento interno de la Secretaría de Economía, sin subordinación al Jefe de Misión.", "Queda sujeta a las mismas obligaciones que los miembros del SEM, bajo la autoridad del Jefe de Misión, y al concluir su comisión cesa automáticamente su carácter de asimilada.", "Adquiere el rango de Consejera de carrera mientras dure su encargo.", "Su sueldo y prestaciones se cubren obligatoriamente con cargo al presupuesto de la SRE."], "ans": [1], "ref": "LSEM, arts. 8 y 12; RLSEM. El personal asimilado se somete al régimen disciplinario y de obligaciones del SEM bajo el Jefe de Misión, y cesa al terminar su comisión."}, {"id": "LSEM-05", "sub": "2.1 Integración del SEM", "type": "single", "q": "¿Cuál es la diferencia normativa entre las funciones de la rama Diplomático-Consular y las de la rama Técnico-Administrativa conforme a la LSEM y la Convocatoria 2026?", "opts": ["La rama Técnico-Administrativa no puede realizar trámites consulares ni de protección, pues éstos son exclusivos de la rama Diplomático-Consular.", "Ambas ramas ejecutan la política exterior; la Técnico-Administrativa desempeña funciones especializadas en administración de recursos, archivo/fiscalización, tecnologías de la información y servicios consulares (documentación, registro civil, protección y vinculación comunitaria).", "La rama Diplomático-Consular solo trabaja en embajadas y la Técnico-Administrativa únicamente en consulados.", "La rama Técnico-Administrativa carece de estatus diplomático o consular ante los Estados receptores."], "ans": [1], "ref": "LSEM, arts. 2, 5 y Convocatoria RTA 2026 (DOF 20-10-2026). La rama Técnico-Administrativa abarca administración, TI y la trípode consular (protección, documentación y comunidades)."}, {"id": "LSEM-06", "sub": "2.1 Integración del SEM", "type": "single", "q": "Conforme al artículo 19 de la LSEM, ¿qué cargos titulares en el exterior deben ser ocupados preferentemente por miembros del Servicio Exterior de carrera?", "opts": ["Únicamente los consulados fronterizos en Estados Unidos.", "Las designaciones de embajadores y cónsules generales.", "Las agregadurías militares, navales y aéreas.", "Las oficinas consulares honorarias."], "ans": [1], "ref": "LSEM, art. 19. La ley establece que las designaciones de embajadores y cónsules generales deben recaer preferentemente (no exclusivamente) en miembros del SEM de carrera."}, {"id": "LSEM-07", "sub": "2.1 Integración del SEM", "type": "single", "q": "De acuerdo con el artículo 1-TER de la LSEM (reformado en 2018), ¿qué principios rigen la actuación del personal del Servicio Exterior Mexicano?", "opts": ["Discrecionalidad, confidencialidad absoluta, jerarquía militar y reciprocidad comercial.", "Legalidad, honradez, lealtad, imparcialidad, eficiencia, eficacia, igualdad de género, no discriminación y respeto a los derechos humanos.", "Autonomía técnica, libre remoción, silencio administrativo y neutralidad fiscal.", "Subordinación diplomática, reciprocidad consular y territorialidad."], "ans": [1], "ref": "LSEM, art. 1-TER y Convocatoria 2026. Incorpora los principios constitucionales del servicio público más igualdad de género, no discriminación y derechos humanos."}, {"id": "LSEM-08", "sub": "2.1 Integración del SEM", "type": "single", "q": "¿Qué ocurre cuando un miembro del SEM de carrera de la rama Técnico-Administrativa desea cambiar a la rama Diplomático-Consular?", "opts": ["Puede solicitar el cambio de rama al cumplir 5 años de antigüedad en el rango de Coordinador Administrativo.", "No existe transferencia automática entre ramas; para ingresar como personal de carrera a la rama Diplomático-Consular debe participar y aprobar el concurso público general de ingreso correspondiente.", "La Comisión de Personal puede autorizar la permuta directa entre un Agregado 'A' y un Segundo Secretario.", "El cambio procede automáticamente al obtener un título de licenciatura."], "ans": [1], "ref": "LSEM, arts. 2, 28 y 33. Cada rama tiene su propio escalafón y concurso público de ingreso con requisitos académicos distintos."}, {"id": "LSEM-09", "sub": "2.2 Personal contratado localmente", "type": "double", "q": "Marque DOS opciones. Un Consulado de México en Canadá necesita contratar un auxiliar de atención al público residente en Toronto. Conforme a los artículos 27 y 28 del RLSEM, ¿qué reglas son obligatorias?", "opts": ["La persona titular de la representación debe contar con autorización previa de la Secretaría de Relaciones Exteriores antes de suscribir el contrato.", "La vigencia del contrato no podrá exceder del 31 de diciembre de cada año, sin perjuicio de su renovación.", "El contrato se rige por la Ley Federal del Trabajo de México y otorga inscripción al ISSSTE.", "Al cumplir tres renovaciones anuales consecutivas, el empleado adquiere nombramiento de Agregado Administrativo 'D'."], "ans": [0, 1], "ref": "RLSEM, arts. 27 y 28. Requiere autorización previa de la SRE, se rige por la legislación local del país sede y su vigencia máxima llega al 31 de diciembre de cada año."}, {"id": "LSEM-10", "sub": "2.2 Personal contratado localmente", "type": "single", "q": "Un empleado local de nacionalidad francesa contratado en la Embajada de México en París incurre en una falta grave contra el orden público fuera de horario laboral y es detenido por la policía francesa. ¿Qué régimen de inmunidad aplica?", "opts": ["Goza de inmunidad penal absoluta conforme al artículo 31 de la CVRD por trabajar en una embajada.", "Por ser nacional del Estado receptor, solo goza de privilegios e inmunidades en la medida en que Francia los admita, sin perjuicio de la inviolabilidad de los documentos oficiales que manejara.", "Gozaría de inmunidad penal si fuera mexicano, pero como es francés solo tiene inmunidad civil.", "La Embajada debe invocar el artículo 37 párrafo 2 de la CVRD para exigir su liberación inmediata."], "ans": [1], "ref": "CVRD, art. 38, párr. 2; Guía IMR (Pregunta modelo 5). El personal local nacional o residente permanente del receptor solo tiene las inmunidades que ese Estado admita."}, {"id": "LSEM-11", "sub": "2.2 Personal contratado localmente", "type": "single", "q": "¿Bajo qué condición puede un Consulado de México en Estados Unidos contratar localmente a una persona de nacionalidad mexicana?", "opts": ["En ningún caso; el personal local debe ser obligatoriamente nacional del país sede.", "Siempre que acredite residencia legal permanente o autorización migratoria vigente para trabajar legalmente en Estados Unidos conforme a su legislación.", "Únicamente si renuncia previamente a su nacionalidad mexicana.", "Si cuenta con pasaporte diplomático expedido por otra embajada."], "ans": [1], "ref": "RLSEM, art. 27. La contratación local exige cumplir con la legislación migratoria y laboral del Estado receptor."}, {"id": "LSEM-12", "sub": "2.2 Personal contratado localmente", "type": "single", "q": "Respecto al deber de reserva y confidencialidad (sigilo) previsto en la normativa del SEM, ¿alcanza también al personal contratado localmente en embajadas y consulados?", "opts": ["No, porque no son miembros del Servicio Exterior Mexicano.", "Sí; conforme al artículo 29 del RLSEM, en sus contratos debe estipularse expresamente la obligación de guardar reserva y discreción sobre los asuntos e información oficial de que tengan conocimiento.", "Únicamente durante los 30 días posteriores a la terminación de su contrato.", "Solo aplica si manejan valija diplomática."], "ans": [1], "ref": "RLSEM, art. 29. Aunque no integran el SEM, están contractual y normativamente obligados a guardar sigilo sobre la información oficial."}, {"id": "LSEM-13", "sub": "2.2 Personal contratado localmente", "type": "single", "q": "Cuando la legislación laboral del país sede exige el pago de aguinaldo, indemnización por despido o aportaciones patronales de seguridad social para el personal local, ¿con cargo a qué recursos se cubren?", "opts": ["Con cargo a la recaudación consular generada en el mes.", "Con cargo al presupuesto autorizado a la representación en la partida correspondiente a servicios personales en el exterior.", "Con cargo al fondo fijo de caja chica de la representación.", "La representación está exenta de pagar prestaciones laborales locales por inmunidad soberana."], "ans": [1], "ref": "RLSEM, art. 28; Manual de Políticas y Normas Presupuestarias; CVRD, art. 33.3. Se cubren con presupuesto autorizado; jamás con recaudación consular ni caja chica."}, {"id": "LSEM-14", "sub": "2.2 Personal contratado localmente", "type": "single", "q": "¿Cuál de las siguientes funciones NO debe delegarse en personal contratado localmente en una oficina consular?", "opts": ["Orientación informativa general sobre requisitos de trámites en ventanilla.", "El ejercicio de la fe pública notarial, la autorización de actas del registro civil o la firma de pasaportes y visas, que corresponden a personas funcionarias consulares.", "Apoyo en la captura preliminar de datos y digitalización de expedientes.", "Atención telefónica básica y canalización de llamadas."], "ans": [1], "ref": "LSEM, art. 44-BIS y RLSEM, arts. 27 y 78-84. Las facultades de fe pública, registro civil y expedición documental son atribuciones de funcionarios consulares del SEM."}, {"id": "LSEM-15", "sub": "2.2 Personal contratado localmente", "type": "single", "q": "Si una representación requiere renovar para el ejercicio fiscal siguiente el contrato de un empleado local cuyo contrato vence el 31 de diciembre, ¿de qué depende dicha renovación?", "opts": ["Es automática por tácita reconducción si no se le notifica despido con 6 meses de anticipación.", "De la autorización de la SRE, la disponibilidad presupuestaria del nuevo ejercicio y la evaluación satisfactoria de su desempeño.", "De la aprobación de la Comisión de Personal del SEM.", "De que el empleado apruebe un examen en el Instituto Matías Romero."], "ans": [1], "ref": "RLSEM, art. 28. Cada contrato concluye a más tardar el 31 de diciembre y su renovación requiere disponibilidad presupuestaria y evaluación favorable."}, {"id": "LSEM-16", "sub": "2.3 Ingreso al SEM", "type": "single", "q": "Una persona nacida en Guadalajara (hija de padre mexicano y madre italiana) desea concursar en la Convocatoria RTA 2026. Italia la considera su nacional por filiación (ius sanguinis). Conforme al art. 32 LSEM y la Convocatoria 2026, ¿qué debe acreditar?", "opts": ["Basta con presentar su acta de nacimiento mexicana y pasaporte mexicano vigente.", "Debe presentar el certificado de nacionalidad mexicana y el documento de renuncia a la nacionalidad italiana.", "Puede conservar la nacionalidad italiana porque la adquirió por nacimiento y no por naturalización.", "Está impedida de por vida para ingresar al Servicio Exterior Mexicano."], "ans": [1], "ref": "LSEM, art. 32, fracc. I; Ley de Nacionalidad, arts. 16 y 17; Convocatoria RTA 2026, Base II inc. a). Quienes otro Estado considere como nacionales deben presentar certificado de nacionalidad mexicana y renuncia expresa a la otra nacionalidad."}, {"id": "LSEM-17", "sub": "2.3 Ingreso al SEM", "type": "double", "q": "Marque DOS opciones. Conforme a la LSEM (art. 33) y la Convocatoria RTA 2026, ¿qué reglas rigen el requisito de idioma para ingresar a la rama Técnico-Administrativa?", "opts": ["Se debe acreditar el dominio de un idioma reconocido como lengua oficial de la ONU (preferentemente inglés), alemán o japonés, o bien de alguna de las lenguas indígenas nacionales previstas en la Convocatoria.", "Para presentar examen de alguna de las lenguas indígenas incluidas en la Convocatoria no es necesario acreditar que se es persona indígena.", "Quienes acrediten una lengua indígena deben presentar además un examen adicional de inglés o francés.", "En la segunda etapa eliminatoria se evalúa únicamente la comprensión de lectura del idioma, sin examen oral ni de redacción."], "ans": [0, 1], "ref": "LSEM, art. 33, fracc. III; Convocatoria RTA 2026, Bases II inc. g) y V.2. Las lenguas indígenas acreditan el segundo idioma en igualdad de condiciones sin exigir autoadscripción documental, y en la 2a etapa hay examen escrito y oral de idioma."}, {"id": "LSEM-18", "sub": "2.3 Ingreso al SEM", "type": "single", "q": "En el Concurso de Ingreso a la rama Técnico-Administrativa 2026, ¿qué ocurre si durante la primera etapa eliminatoria una persona concursante llega a la sede del examen 10 minutos después de que la primera persona concursante de cualquier sede haya entregado su examen resuelto?", "opts": ["Se le permite ingresar descontándole 10 minutos del tiempo total.", "No se le permitirá el acceso al recinto para contestar el examen correspondiente y causará baja inmediata del Concurso.", "Puede presentar el examen en el turno vespertino del día siguiente.", "Solo se le niega el acceso si llega más de 30 minutos tarde."], "ans": [1], "ref": "Convocatoria RTA 2026, Base V. No se permite el acceso tras haber entregado su examen la primera persona concursante de cualquier sede, y no presentar un examen causa baja inmediata."}, {"id": "LSEM-19", "sub": "2.3 Ingreso al SEM", "type": "single", "q": "Conforme a la Convocatoria RTA 2026, durante la segunda etapa eliminatoria (cursos en el IMR y experiencia práctica en la SRE), ¿qué porcentaje mínimo de asistencia se exige para conservar el derecho a recibir la beca mensual equivalente al sueldo neto de Agregado Administrativo 'D'?", "opts": ["80% de asistencia.", "85% de asistencia.", "90% de asistencia a las actividades programadas.", "100% de asistencia sin posibilidad de justificar inasistencias médicas."], "ans": [2], "ref": "LSEM, art. 31 y Convocatoria RTA 2026, Base V.2. Exige mínimo 90% de asistencia (sin contar faltas debidamente justificadas por fuerza mayor o razones médicas)."}, {"id": "LSEM-20", "sub": "2.3 Ingreso al SEM", "type": "single", "q": "Una persona aspirante obtuvo su título profesional en una universidad extranjera. Conforme a la Convocatoria RTA 2026, ¿qué formalidades debe cumplir ese documento en la entrega documental?", "opts": ["Basta con una copia simple cotejada ante notario público mexicano.", "Debe presentarse legalizado o apostillado, así como traducido por perito traductor oficial, sin que se acepten documentos certificados ante notario público.", "Solo requiere traducción simple hecha por la propia persona aspirante.", "Debe revalidarse únicamente después de aprobar la segunda etapa."], "ans": [1], "ref": "Convocatoria RTA 2026, Base IV inc. f). Los títulos extranjeros deben estar legalizados o apostillados y traducidos por perito oficial; no se aceptan certificaciones notariales."}, {"id": "LSEM-21", "sub": "2.3 Ingreso al SEM", "type": "single", "q": "¿Qué sucede con la beca mensual de las personas participantes en el periodo de dos meses posteriores a la conclusión de la segunda etapa eliminatoria, mientras la Comisión de Personal evalúa su desempeño para recomendar su nombramiento?", "opts": ["Se sigue pagando íntegra hasta el día en que toman protesta.", "La beca cesa al término de la segunda etapa eliminatoria, por lo que durante el plazo máximo de dos meses en que la Comisión de Personal evalúa y comunica el resultado no habrá apoyo de beca.", "Se paga al 50% por concepto de disponibilidad.", "Se convierte automáticamente en salario tabular definitivo."], "ans": [1], "ref": "Convocatoria RTA 2026, Base V.2. La beca abarca exclusivamente el periodo del curso y práctica, cesa al concluir éste y no se paga durante los hasta dos meses de deliberación final."}, {"id": "LSEM-22", "sub": "2.3 Ingreso al SEM", "type": "single", "q": "Conforme al artículo 28 de la LSEM, ¿qué órgano preside la Subcomisión de Ingreso encargada de organizar y supervisar los concursos de ingreso al SEM?", "opts": ["La persona titular de la Dirección General del Instituto Matías Romero.", "Un miembro de la Comisión de Personal designado conforme al Reglamento, con participación de la DGSERH y el IMR.", "La persona titular de la Secretaría Anticorrupción y Buen Gobierno.", "El Consultor Jurídico de la SRE."], "ans": [1], "ref": "LSEM, art. 28 y RLSEM, art. 35. La Subcomisión de Ingreso es un órgano auxiliar de la Comisión de Personal del SEM."}, {"id": "LSEM-23", "sub": "2.3 Ingreso al SEM", "type": "single", "q": "En la Convocatoria RTA 2026, si en un perfil específico (por ejemplo, Administración) alguna de las 22 plazas reservadas para mujeres no se cubre por falta de aspirantes que aprueben todas las etapas, ¿qué ocurre con esa plaza?", "opts": ["Se declara desierta y se cancela hasta la convocatoria del año siguiente.", "Podrá ser asignada a la persona participante del otro género del mismo perfil que, habiendo cumplido todos los requisitos, haya obtenido la siguiente calificación más alta conforme al orden de prelación.", "Se transfiere automáticamente al perfil de Tecnologías de la Información.", "Se asigna por designación directa sin examen a personal temporal."], "ans": [1], "ref": "Convocatoria RTA 2026, Acuerdo Único. La medida afirmativa de paridad permite reasignar plazas vacantes dentro del mismo perfil al otro género siguiendo estrictamente el orden de prelación."}, {"id": "LSEM-24", "sub": "2.3 Ingreso al SEM", "type": "single", "q": "¿Cuál es la diferencia en el requisito académico mínimo previsto en la LSEM entre ingresar a la rama Diplomático-Consular (art. 32) y a la rama Técnico-Administrativa (art. 33)?", "opts": ["Ambas exigen título de licenciatura sin excepción.", "La Diplomático-Consular exige como mínimo grado académico de licenciatura, mientras que la Técnico-Administrativa exige como mínimo grado de técnico superior universitario o su equivalente.", "La Diplomático-Consular exige maestría y la Técnico-Administrativa bachillerato.", "Ninguna exige grado académico si se aprueba el examen de conocimientos."], "ans": [1], "ref": "LSEM, art. 32 fracc. V vs. art. 33 fracc. I. Licenciatura mínima para Diplomático-Consular; Técnico Superior Universitario o equivalente mínimo para Técnico-Administrativa."}, {"id": "LSEM-25", "sub": "2.4 Rangos y antigüedad", "type": "single", "q": "Un aspirante consulta una guía antigua de 2016 donde aparecen los rangos 'Técnico Administrativo C, B y A'. Conforme al artículo 5 de la LSEM vigente (reforma de 2018), ¿cuáles son los 5 rangos actuales de la rama Técnico-Administrativa en orden ascendente?", "opts": ["Agregado Administrativo 'D', Agregado Administrativo 'C', Agregado Administrativo 'B', Agregado Administrativo 'A' y Coordinador Administrativo.", "Técnico Administrativo 'D', 'C', 'B', 'A' y Jefe Administrativo.", "Agregado Administrativo 'A', 'B', 'C', 'D' y Coordinador Administrativo.", "Auxiliar Administrativo, Agregado Administrativo 'C', 'B', 'A' y Director Administrativo."], "ans": [0], "ref": "LSEM, art. 5, apartado B (reforma DOF 19-04-2018). El ingreso es en Agregado Administrativo 'D' y el rango máximo de la rama es Coordinador Administrativo."}, {"id": "LSEM-26", "sub": "2.4 Rangos y antigüedad", "type": "single", "q": "Dos funcionarios de la rama Técnico-Administrativa tienen el mismo rango de Agregado Administrativo 'B'. Uno ingresó al SEM en 2018 y ascendió a 'B' en 2024; el otro ingresó en 2020 y ascendió a 'B' en 2023. ¿Quién tiene mayor antigüedad relativa y quién mayor antigüedad absoluta?", "opts": ["El que ingresó en 2018 tiene mayor antigüedad absoluta y también mayor antigüedad relativa.", "El que ingresó en 2018 tiene mayor antigüedad absoluta, pero el que ascendió en 2023 tiene mayor antigüedad relativa en el rango.", "Ambos tienen exactamente la misma antigüedad relativa porque ostentan el mismo rango.", "La antigüedad absoluta solo se computa en la rama Diplomático-Consular."], "ans": [1], "ref": "LSEM, art. 36 y RLSEM. Antigüedad absoluta = desde ingreso al SEM de carrera; antigüedad relativa = desde la fecha de obtención del rango actual."}, {"id": "LSEM-27", "sub": "2.4 Rangos y antigüedad", "type": "single", "q": "En la rama Diplomático-Consular, ¿qué rango de ingreso recibe quien aprueba el concurso público general y cuánto tiempo permanece en ese rango inicial antes de su evaluación para ascender a Tercer Secretario conforme al artículo 31 de la LSEM?", "opts": ["Ingresa directamente como Tercer Secretario.", "Ingresa con el rango de Agregado Diplomático y, tras un periodo de servicio/evaluación reglamentario, asciende a Tercer Secretario.", "Ingresa como Vicecónsul durante dos años.", "Ingresa como Segundo Secretario si cuenta con maestría."], "ans": [1], "ref": "LSEM, arts. 5 apartado A y 31. El primer rango del escalafón Diplomático-Consular es Agregado Diplomático, seguido por Tercer Secretario."}, {"id": "LSEM-28", "sub": "2.4 Rangos y antigüedad", "type": "double", "q": "Marque DOS opciones. Respecto a los concursos de ascenso en la rama Técnico-Administrativa (arts. 37-39 de la LSEM), ¿qué criterios y reglas aplican?", "opts": ["Todos los ascensos hasta Coordinador Administrativo se realizan mediante concursos de ascenso convocados por la Secretaría a recomendación de la Comisión de Personal.", "Se evalúan los expedientes, méritos, evaluaciones del desempeño, antigüedad y exámenes correspondientes.", "Para ascender de Agregado Administrativo 'A' a Coordinador Administrativo basta con cumplir 65 años de edad.", "Los concursos de ascenso se celebran únicamente cada seis años al cambio de administración."], "ans": [0, 1], "ref": "LSEM, arts. 37, 38 y 39. Los ascensos se otorgan por concurso valorando desempeño, exámenes, méritos y antigüedad mínima en el rango."}, {"id": "LSEM-29", "sub": "2.4 Rangos y antigüedad", "type": "single", "q": "¿Qué rango de la rama Diplomático-Consular se ubica inmediatamente por debajo de 'Ministro' y por encima de 'Primer Secretario'?", "opts": ["Segundo Secretario.", "Consejero.", "Cónsul General.", "Coordinador Administrativo."], "ans": [1], "ref": "LSEM, art. 5, apartado A. Orden ascendente: Agregado Diplomático $\rightarrow$ Tercer Secretario $\rightarrow$ Segundo Secretario $\rightarrow$ Primer Secretario $\rightarrow$ Consejero $\rightarrow$ Ministro $\rightarrow$ Embajador."}, {"id": "LSEM-30", "sub": "2.4 Rangos y antigüedad", "type": "single", "q": "Si un miembro del SEM de carrera obtiene autorización de 'disponibilidad' por 2 años (art. 52 LSEM) y posteriormente se reincorpora al servicio activo, ¿cómo se computa ese lapso de 2 años en su hoja de servicios?", "opts": ["Se suma a su antigüedad absoluta pero no a su antigüedad relativa.", "No se computa para efectos de antigüedad absoluta ni relativa, ni genera sueldo o prestaciones durante la separación.", "Se computa al 50% si realizó estudios de posgrado.", "Se suma íntegro a ambas antigüedades."], "ans": [1], "ref": "LSEM, art. 52. Durante la disponibilidad se suspenden sueldo, prestaciones y cómputo de antigüedad."}, {"id": "LSEM-31", "sub": "2.4 Rangos y antigüedad", "type": "single", "q": "Cuando un miembro de la rama Técnico-Administrativa es adscrito a una Embajada en el exterior, ¿qué categoría tiene conforme a la Convención de Viena sobre Relaciones Diplomáticas?", "opts": ["Agente diplomático (jefe de misión).", "Miembro del personal administrativo y técnico de la misión.", "Miembro del personal de servicio doméstico.", "Cónsul honorario."], "ans": [1], "ref": "CVRD, art. 1 incisos c) y f); Guía IMR (Pregunta modelo 4). Los Agregados Administrativos integran el personal administrativo y técnico de la misión diplomática."}, {"id": "LSEM-32", "sub": "2.4 Rangos y antigüedad", "type": "single", "q": "En caso de empate en la calificación final de un concurso de ascenso entre dos miembros del SEM del mismo rango, ¿qué criterio legal se utiliza para determinar la prelación conforme a la LSEM?", "opts": ["La edad cronológica mayor.", "La mayor antigüedad en el rango (relativa) y, de persistir, la mayor antigüedad en el Servicio Exterior (absoluta), observando criterios de paridad.", "Un sorteo realizado por el Órgano Interno de Control.", "La adscripción geográfica más cercana a la Ciudad de México."], "ans": [1], "ref": "LSEM, arts. 36-40 y RLSEM. La antigüedad relativa y absoluta sirven como criterios de desempate y prelación escalafonaria."}, {"id": "LSEM-33", "sub": "2.5 Nombramiento de titulares", "type": "single", "q": "El Ejecutivo Federal propone a una persona para ocupar el cargo de Cónsul General en Los Ángeles y a otra para encabezar el Consulado de Carrera en Boise. Conforme a la Constitución (arts. 76 y 89) y la LSEM (arts. 19 y 23), ¿qué trámite legislativo aplica?", "opts": ["Ambos nombramientos requieren aprobación del Senado por ser titulares de oficinas consulares.", "El nombramiento de Cónsul General en Los Ángeles requiere ratificación del Senado (o de la Comisión Permanente en sus recesos); el de titular del Consulado de Carrera en Boise lo expide directamente la SRE sin pasar por el Senado.", "Ninguno requiere ratificación del Senado porque solo los Embajadores pasan por el Poder Legislativo.", "El de Boise requiere ratificación del Senado y el de Los Ángeles de la Cámara de Diputados."], "ans": [1], "ref": "CPEUM, arts. 76 fracc. II, 78 fracc. VII, 89 fracc. III; LSEM, arts. 19 y 23. Solo Embajadores y Cónsules Generales requieren ratificación del Senado/Comisión Permanente."}, {"id": "LSEM-34", "sub": "2.5 Nombramiento de titulares", "type": "single", "q": "Durante el receso del Congreso de la Unión, el Presidente de la República nombra a una Embajadora de México. La Comisión Permanente ratifica el nombramiento. ¿Debe someterse nuevamente al Pleno del Senado al iniciar el siguiente periodo ordinario de sesiones?", "opts": ["Sí, la ratificación de la Comisión Permanente es meramente provisional por 30 días.", "No; conforme al artículo 78 fracción VII de la Constitución, la Comisión Permanente tiene facultad definitiva para ratificar los nombramientos de embajadores y cónsules generales en los recesos del Senado.", "Sí, pero solo si la persona nombrada no pertenece al SEM de carrera.", "Debe ratificarlo la Cámara de Diputados."], "ans": [1], "ref": "CPEUM, art. 78, fracc. VII y LSEM, art. 19. La ratificación otorgada por la Comisión Permanente durante los recesos surte plenos efectos constitucionales."}, {"id": "LSEM-35", "sub": "2.5 Nombramiento de titulares", "type": "single", "q": "Un Embajador de México es acreditado simultáneamente ante tres Estados insulares del Caribe con residencia en uno solo de ellos (acreditación múltiple). Conforme a la LSEM y la CVRD, ¿qué se requiere?", "opts": ["El consentimiento expreso de cada uno de los Estados receptores y la ratificación correspondiente del nombramiento ante cada Estado.", "Únicamente notificar por correo electrónico a los tres países.", "La CVRD prohíbe acreditar a un mismo jefe de misión ante más de un Estado.", "Designar tres embajadores distintos con cargo al mismo presupuesto."], "ans": [0], "ref": "CVRD, art. 5, párr. 1 y LSEM, art. 19. Un jefe de misión puede acreditarse ante varios Estados salvo que alguno de ellos se oponga expresamente."}, {"id": "LSEM-36", "sub": "2.5 Nombramiento de titulares", "type": "double", "q": "Marque DOS opciones. Conforme a la LSEM y su Reglamento, respecto a las atribuciones del Jefe de Misión (Embajador) en el país receptor, ¿qué reglas aplican?", "opts": ["Representa al Estado mexicano y coordina las actividades de las oficinas de otras dependencias de la APF adscritas en ese país.", "Debe mantener informada a la SRE sobre la situación política, económica, social y jurídica del Estado receptor.", "Puede suscribir tratados internacionales definitivos sin necesidad de Plenos Poderes ni instrucción de la Cancillería.", "Tiene facultad para destituir directamente sin procedimiento disciplinario al personal de carrera de la misión."], "ans": [0, 1], "ref": "LSEM, arts. 10, 11 y 12; CVRD, art. 3. El Jefe de Misión coordina a todas las oficinas federales en el país receptor e informa a la SRE."}, {"id": "LSEM-37", "sub": "2.5 Nombramiento de titulares", "type": "single", "q": "Si en una Embajada de México el Embajador titular sale de vacaciones y los únicos funcionarios adscritos son: (1) un Primer Secretario de carrera, (2) un Agregado Administrativo 'A' de carrera, y (3) un Agregado Militar asimilado, ¿quién asume como Encargado de Negocios ad interim?", "opts": ["El Agregado Administrativo 'A' por ser el de mayor rango técnico.", "El Primer Secretario de carrera, por ser el miembro de la rama Diplomático-Consular de mayor jerarquía en la misión.", "El Agregado Militar por ser personal asimilado de alto rango.", "Cualquiera de los tres por sorteo."], "ans": [1], "ref": "LSEM, art. 24 y RLSEM. La encargaduría de negocios ad interim recae siempre en el miembro de la rama Diplomático-Consular de mayor rango en la misión."}, {"id": "LSEM-38", "sub": "2.5 Nombramiento de titulares", "type": "single", "q": "¿Qué diferencia existe entre las 'Cartas Credenciales' y la 'Carta Patente'?", "opts": ["Las Cartas Credenciales acreditan al Jefe de Misión diplomática ante el Jefe de Estado receptor; la Carta Patente acredita al Jefe de Oficina Consular para obtener el exequátur del Estado receptor.", "Las Cartas Credenciales las firma el Senado y la Carta Patente el Secretario de Gobernación.", "La Carta Patente es solo para cónsules honorarios y las Cartas Credenciales para cónsules generales.", "Son sinónimos exactos usados indistintamente en embajadas y consulados."], "ans": [0], "ref": "CVRD, art. 13; CVRC, arts. 11 y 12; LSEM, art. 25. Distinción clásica entre acreditación diplomática y consular."}, {"id": "LSEM-39", "sub": "2.6 Rotación y traslados", "type": "single", "q": "Un Agregado Administrativo 'C' lleva 5 años adscrito en un Consulado en Estados Unidos y solicita permanecer indefinidamente en esa misma plaza alegando arraigo familiar. Conforme al artículo 13 de la LSEM, ¿procede su solicitud?", "opts": ["Sí, después de 5 años adquiere inamovilidad en la adscripción.", "No; los miembros del SEM de carrera están sujetos al principio de rotación y deben ser trasladados periódicamente entre representaciones en el exterior y oficinas en México.", "Sí, siempre que renuncie a la ayuda para el pago de renta.", "Solo procede si el Cónsul General lo autoriza de forma permanente."], "ans": [1], "ref": "LSEM, arts. 13 y 14. La rotación es un principio estructural del SEM de carrera para evitar el desarraigo con México y garantizar versatilidad."}, {"id": "LSEM-40", "sub": "2.6 Rotación y traslados", "type": "single", "q": "Conforme al artículo 14 de la LSEM y su Reglamento, ¿en qué caso puede autorizarse que un miembro del SEM de carrera permanezca menos de dos años en una adscripción en el exterior?", "opts": ["Cuando el funcionario lo pida por no gustarle el clima de la ciudad.", "Por necesidades del servicio debidamente motivadas, por tratarse de plazas clasificadas de condiciones de vida difíciles o de riesgo, o por ascenso/comisión especial.", "Nunca; el mínimo de dos años no admite excepción alguna.", "Cada vez que cambie el titular de la embajada."], "ans": [1], "ref": "LSEM, art. 14 y RLSEM, art. 16. La regla general es de 2 a 6 años, con excepciones por necesidades del servicio o condiciones difíciles."}, {"id": "LSEM-41", "sub": "2.6 Rotación y traslados", "type": "single", "q": "Dos integrantes del SEM de carrera (una Tercera Secretaria y un Agregado Administrativo 'C') contraen matrimonio. Conforme al artículo 15 de la LSEM, ¿qué criterio aplica la SRE para su adscripción?", "opts": ["Prohíbe que trabajen en el mismo país para evitar conflictos de interés.", "Procurará adscribirlos en la misma representación o en representaciones cercanas, siempre que las necesidades del servicio lo permitan y no exista subordinación jerárquica directa entre ellos.", "Ordena que uno de los dos pase a situación de disponibilidad.", "Los adscribe obligatoriamente a oficinas centrales en la Ciudad de México."], "ans": [1], "ref": "LSEM, art. 15 y RLSEM, art. 18. Se busca la unidad familiar en la misma plaza o cercana, evitando línea de mando directa entre cónyuges."}, {"id": "LSEM-42", "sub": "2.6 Rotación y traslados", "type": "double", "q": "Marque DOS opciones. Cuando un miembro del SEM de carrera recibe orden de traslado de una adscripción en el exterior hacia oficinas centrales en México, ¿qué obligaciones y efectos se producen?", "opts": ["Debe realizar formalmente el acta de entrega-recepción de los asuntos, archivos, claves y bienes a su cargo antes de salir de la representación.", "Percibirá durante su adscripción en México el sueldo correspondiente al tabulador nacional autorizado.", "Pierde el derecho al transporte de su menaje de casa de regreso a México.", "Se suspende el cómputo de su antigüedad absoluta mientras trabaje en la Ciudad de México."], "ans": [0, 1], "ref": "LSEM, arts. 13, 14, 43 fracc. VI y 47. En México percibe el tabulador nacional, mantiene íntegra su antigüedad y tiene derecho a traslado de menaje tras cumplir plazos."}, {"id": "LSEM-43", "sub": "2.6 Rotación y traslados", "type": "single", "q": "Si un miembro del SEM de carrera se niega injustificadamente a cumplir una orden de traslado dictada por la Secretaría conforme al principio de rotación, ¿qué consecuencia jurídica acarrea?", "opts": ["Se le otorga una prórroga automática de un año en su adscripción actual.", "Constituye una infracción grave a sus obligaciones legales y es causal de responsabilidad disciplinaria (pudiendo llegar a la destitución).", "Solo se le descuenta el 10% de su ayuda de renta.", "Pasa automáticamente a ser personal contratado localmente."], "ans": [1], "ref": "LSEM, arts. 13, 43 y 57. Acatar las órdenes de traslado forma parte esencial de las obligaciones del cuerpo permanente."}, {"id": "LSEM-44", "sub": "2.6 Rotación y traslados", "type": "single", "q": "¿Qué plazo reglamentario ordinario tiene un miembro del SEM para trasladarse a su nueva adscripción una vez que se le notifica oficialmente el acuerdo de traslado (art. 20 RLSEM)?", "opts": ["Dentro de los 30 días naturales siguientes a la notificación, salvo que la Secretaría fije un plazo distinto por necesidades del servicio.", "Dentro de las 72 horas siguientes sin excepción.", "A los 6 meses exactos de la notificación.", "Cuando concluya el ciclo escolar de sus hijos sin límite de tiempo."], "ans": [0], "ref": "RLSEM, art. 20. El plazo ordinario es de 30 días siguientes a la notificación, modificable por la SRE según necesidades del servicio."}, {"id": "LSEM-45", "sub": "2.6 Rotación y traslados", "type": "single", "q": "¿Quién emite las recomendaciones sobre adscripciones y traslados de los miembros del Servicio Exterior antes de que el Secretario de Relaciones Exteriores dicte el acuerdo respectivo?", "opts": ["La Comisión de Personal del Servicio Exterior Mexicano.", "La Secretaría de Hacienda y Crédito Público.", "La Cámara de Senadores.", "El Órgano Interno de Control."], "ans": [0], "ref": "LSEM, arts. 13 y 26. La Comisión de Personal asesora y recomienda al Secretario los movimientos de rotación y traslado."}, {"id": "LSEM-46", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "Un Agregado Administrativo es trasladado de México a una Embajada en Europa. Conforme al artículo 47 fracción II de la LSEM, ¿cuál es el propósito de los 'gastos de instalación' que le otorga la Secretaría?", "opts": ["Pagar la renta mensual de su departamento durante toda su adscripción.", "Cubrir por única vez al inicio de la comisión los gastos extraordinarios que origina el establecimiento en el lugar de destino (conforme al tabulador por rango y dependientes).", "Comprar un vehículo oficial para uso personal del funcionario.", "Financiar las vacaciones anuales de su familia."], "ans": [1], "ref": "LSEM, art. 47, fracc. II y RLSEM. Los gastos de instalación se otorgan al iniciar la adscripción para cubrir gastos iniciales de establecimiento."}, {"id": "LSEM-47", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "Respecto a la franquicia aduanera para la importación del menaje de casa de un miembro del SEM que regresa a México al término de su comisión (art. 49 LSEM y Ley Aduanera), ¿cuál afirmación es correcta?", "opts": ["Puede importar libre de impuestos cualquier mercancía nueva comprada para revenderla en México.", "La franquicia es intransferible, cubre bienes usados que constituyan su menaje de casa en cantidades acordes a su rango y familia, y está prohibido utilizarla con fines comerciales o lucrativos.", "Solo aplica si el funcionario estuvo adscrito más de 10 años en el extranjero.", "Permite importar hasta 5 vehículos automotores libres de impuestos."], "ans": [1], "ref": "LSEM, arts. 44 fracc. IV, 47 fracc. III y 49; Ley Aduanera, art. 61 fracc. VII. Las franquicias son personales, intransferibles y excluyen fines lucrativos."}, {"id": "LSEM-48", "sub": "2.7 Prestaciones y franquicias", "type": "double", "q": "Marque DOS opciones. En relación con el servicio de traslado de menaje de casa de los miembros del SEM (Guía IMR, tema 7.4 del perfil Administración), ¿qué bienes están EXCLUIDOS del menaje autorizado con cargo a la SRE?", "opts": ["Mercancías de carácter comercial, sustancias peligrosas o inflamables, armas, explosivos y bienes prohibidos por las disposiciones aduaneras.", "Animales vivos, plantas o perecederos cuya transportación esté restringida en fletes internacionales de menaje.", "Muebles de sala, comedor, recámara y electrodomésticos de uso doméstico normal.", "Ropa, libros y artículos personales del funcionario y sus dependientes económicos."], "ans": [0, 1], "ref": "RLSEM y Anexo Técnico de Traslado de Menaje de Casa SRE (Guía IMR, tema 7.4). Excluye bienes comerciales, peligrosos, armas, perecederos y animales vivos."}, {"id": "LSEM-49", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "Un miembro del SEM adscrito en el exterior sufre una emergencia médica grave en un país donde no existe seguridad social gratuita. Conforme al artículo 47 fracción V de la LSEM, ¿qué prestación le corresponde?", "opts": ["La contratación por parte de la SRE de un seguro de gastos médicos mayores en el extranjero (o el reembolso de gastos médicos en los términos reglamentarios) para el funcionario y sus dependientes económicos autorizados.", "Únicamente atención telefónica desde México.", "Un préstamo personal descontable de su salario en 6 quincenas.", "Ninguna cobertura médica fuera de territorio nacional."], "ans": [0], "ref": "LSEM, art. 47, fracc. V. La Secretaría proporciona seguro médico en el extranjero para el miembro del SEM y sus dependientes económicos acreditados."}, {"id": "LSEM-50", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "¿Bajo qué condición tiene derecho un miembro del SEM adscrito en el exterior a que la SRE le cubra pasajes de vacaciones hacia México?", "opts": ["Cada 6 meses desde el primer día de llegada.", "Después de haber cumplido el tiempo mínimo de permanencia continua en el exterior establecido en el Reglamento (ordinariamente 2 años), conforme a la disponibilidad presupuestal.", "Únicamente cuando asciende de rango.", "No existen pasajes por vacaciones en la LSEM."], "ans": [1], "ref": "LSEM, art. 47, fracc. I y RLSEM. Se otorgan pasajes para disfrutar vacaciones en México tras cumplir los plazos reglamentarios de servicio en el exterior."}, {"id": "LSEM-51", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "En materia de licencias (art. 51 de la LSEM), ¿qué ocurre cuando una miembro del SEM solicita licencia por maternidad?", "opts": ["Se le descuenta el 50% de su sueldo tabular durante la incapacidad.", "Disfruta de licencia con goce íntegro de sueldo y prestaciones, sin afectación alguna a su antigüedad ni a sus derechos de carrera.", "Debe pasar a situación de disponibilidad sin sueldo.", "Se suspende su ayuda para el pago de renta."], "ans": [1], "ref": "LSEM, art. 51; Convocatoria 2026 (igualdad laboral y protección a la maternidad). Las licencias médicas y por maternidad son con goce íntegro y mantienen antigüedad."}, {"id": "LSEM-52", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "¿Quiénes son considerados 'dependientes económicos' de un miembro del SEM para efectos de pasajes, seguro médico y límite de menaje de casa conforme al RLSEM?", "opts": ["Cualquier amigo o primo que viaje con el funcionario.", "Su cónyuge (o concubina/concubinario), sus hijos menores de edad (o mayores solteros que estudien y dependan económicamente en los términos reglamentarios) y sus ascendientes directos que dependan económicamente de él y vivan en su hogar.", "Únicamente el cónyuge, excluyendo siempre a los hijos.", "Todos los familiares hasta el cuarto grado colateral."], "ans": [1], "ref": "RLSEM, art. 47 y disposiciones administrativas de prestaciones. Incluye cónyuge/concubino, hijos dependientes y ascendientes dependientes acreditados."}, {"id": "LSEM-53", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "Si un miembro del SEM adscrito en el exterior recibe autorización para realizar una comisión oficial en otra ciudad del mismo país o en un tercer país, ¿qué plazo tiene para comprobar los viáticos y pasajes en el SIGEPP al concluir la comisión?", "opts": ["Dentro de los 10 días hábiles siguientes al término de la comisión, conforme al Manual de Políticas y Normas Presupuestarias.", "Al cierre del ejercicio fiscal el 31 de diciembre.", "No requiere comprobación si el monto fue inferior a 500 dólares.", "6 meses después de la comisión."], "ans": [0], "ref": "Manual de Políticas y Normas Presupuestarias para las RME (Guía IMR, tema 6.6). La comprobación en el Módulo de Comisiones Oficiales del SIGEPP debe realizarse dentro de los 10 días hábiles posteriores."}, {"id": "LSEM-54", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "¿Qué sucede si un miembro del SEM fallece estando en servicio activo en el extranjero?", "opts": ["La familia debe cubrir por su cuenta el traslado de los restos a México.", "La Secretaría cubre los gastos de traslado de los restos a territorio nacional, así como los pasajes de regreso y transporte del menaje de casa de sus dependientes económicos.", "Únicamente se expide el acta de defunción gratuita.", "Los gastos se descuentan de la pensión del cónyuge."], "ans": [1], "ref": "LSEM, art. 48. En caso de fallecimiento en el exterior, la SRE cubre el traslado de restos, pasajes de dependientes y menaje de casa."}, {"id": "LSEM-55", "sub": "2.7 Prestaciones y franquicias", "type": "single", "q": "La ayuda económica para el pago de colegiaturas de hijos de miembros del SEM en el exterior (art. 47 fracc. VI LSEM) aplica:", "opts": ["Para estudios de posgrado y doctorado de hijos mayores de 30 años.", "Para educación preescolar, primaria, secundaria y media superior de hijos menores dependientes económicos en el exterior, conforme a los porcentajes y topes autorizados.", "Para cursos de idiomas del propio funcionario.", "Para cualquier familiar que resida en México."], "ans": [1], "ref": "LSEM, art. 47, fracc. VI y RLSEM. Cubre parcialmente colegiaturas escolares de hijos dependientes en el extranjero."}, {"id": "LSEM-56", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "Un Primer Secretario se jubila del Servicio Exterior Mexicano. Tres años después, una editorial extranjera le ofrece publicar sus memorias incluyendo cables diplomáticos confidenciales que conoció durante su última adscripción. Conforme al art. 43 fracc. IV de la LSEM:", "opts": ["Puede publicarlos libremente porque ya causó baja definitiva del SEM.", "Tiene prohibido divulgarlos, pues la obligación de guardar sigilo y discreción sobre los asuntos oficiales subsiste aun después de haber abandonado el Servicio Exterior.", "Puede publicarlos si han transcurrido más de 2 años desde su retiro.", "Solo necesita pedir permiso al gobierno del país donde estuvo adscrito."], "ans": [1], "ref": "LSEM, art. 43, fracc. IV. El deber de sigilo es vitalicio y subsiste tras separarse del SEM."}, {"id": "LSEM-57", "sub": "2.8 Obligaciones y prohibiciones", "type": "double", "q": "Marque DOS opciones. Un Agregado Administrativo adscrito en un Consulado en Estados Unidos quiere: (1) abrir una tienda en línea de venta de artesanías en EE. UU. a su nombre, y (2) impartir una charla académica no remunerada en una universidad local sobre administración pública mexicana. Conforme al art. 44 de la LSEM:", "opts": ["Tiene estrictamente prohibido abrir la tienda en línea, pues el personal del SEM no puede ejercer actividades comerciales o profesionales en provecho propio en el Estado receptor.", "Puede impartir la charla académica no remunerada siempre que cuente con autorización previa de la Secretaría y respete el deber de sigilo.", "Puede operar la tienda en línea siempre que pague impuestos en Estados Unidos.", "Tiene prohibida cualquier actividad académica aun cuando sea gratuita y autorizada por la SRE."], "ans": [0, 1], "ref": "LSEM, art. 44, fracc. II y CVRD, art. 42. Se prohíbe toda actividad comercial o lucrativa privada; las actividades docentes o académicas honoríficas requieren autorización de la SRE."}, {"id": "LSEM-58", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "Durante una campaña electoral presidencial en el país receptor, un miembro del SEM publica en su cuenta personal de redes sociales mensajes llamando a votar por uno de los candidatos locales. ¿Qué norma infringe directamente?", "opts": ["Ninguna, porque lo hizo desde su cuenta personal fuera de horario laboral.", "El artículo 44 fracción I de la LSEM y el artículo 41 de la CVRD, que prohíben a los miembros del SEM intervenir en los asuntos internos y de carácter político del Estado receptor.", "Únicamente el Reglamento de Pasaportes.", "Solo la Ley Federal de Derechos."], "ans": [1], "ref": "LSEM, art. 44, fracc. I; CVRD, art. 41.1; CVRC, art. 55.1. Prohibición absoluta de injerencia política en el Estado receptor."}, {"id": "LSEM-59", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "Cuando un miembro del SEM que tiene bajo su resguardo formas numeradas valoradas (libretas de pasaporte y hologramas) y sellos consulares es trasladado a otra adscripción, ¿cómo debe entregar dichos bienes?", "opts": ["Dejándolos bajo llave en su escritorio y enviando la llave por correo.", "Mediante acta administrativa de entrega-recepción formal con corte de inventario y conciliación de formas valoradas ante el funcionario entrante o quien designe el titular.", "Entregándolos verbalmente al empleado local de ventanilla.", "Llevándoselos consigo a su nueva adscripción."], "ans": [1], "ref": "LSEM, art. 43, fraccs. V y VI; LGA; Normas de Consulados Móviles y Recaudación (Guía IMR, tema 12.3). Exige entrega-recepción formal inventariada."}, {"id": "LSEM-60", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "Un miembro del SEM adscrito en Alemania proyecta contraer matrimonio con una ciudadana alemana. Conforme al artículo 44 fracción V de la LSEM, ¿qué debe hacer?", "opts": ["Solicitar autorización al Senado de la República.", "Informar previamente por escrito a la Secretaría de Relaciones Exteriores.", "Renunciar al SEM antes de la boda porque está prohibido casarse con extranjeros.", "Tramitar la naturalización mexicana de su pareja como requisito previo a la boda."], "ans": [1], "ref": "LSEM, art. 44, fracc. V. Debe dar aviso previo a la SRE antes de contraer matrimonio con persona extranjera."}, {"id": "LSEM-61", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "El Ministerio de Relaciones Exteriores del país sede ofrece otorgar una condecoración oficial al Embajador de México al término de su misión. Conforme al art. 37 apartado C de la Constitución y el art. 44 de la LSEM, ¿puede aceptarla?", "opts": ["Sí, directamente en la ceremonia sin trámite previo.", "No sin antes solicitar y obtener la autorización constitucional correspondiente (del Ejecutivo Federal / Congreso según aplique) y de la Secretaría de Relaciones Exteriores.", "No, los diplomáticos mexicanos tienen prohibido recibir condecoraciones extranjeras.", "Sí, siempre que la condecoración no tenga valor económico."], "ans": [1], "ref": "CPEUM, art. 37, apartado C, fracc. III y LSEM, art. 44, fracc. IV. Requiere permiso constitucional previo para admitir condecoraciones de gobiernos extranjeros."}, {"id": "LSEM-62", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "Un país centroamericano que no tiene consulado en cierta ciudad de Canadá solicita al Consulado de México en esa ciudad que expida documentos de viaje a sus nacionales de manera permanente. Conforme al art. 44 fracc. III de la LSEM y el art. 8 de la CVRC:", "opts": ["El Cónsul de México puede aceptar de inmediato invocando la solidaridad latinoamericana.", "El personal del SEM tiene prohibido desempeñar gestiones consulares para otro país sin la autorización previa y expresa de la Secretaría de Relaciones Exteriores (y sin oposición del Estado receptor).", "Solo puede hacerlo si cobra el doble de derechos consulares.", "Está prohibido incluso con autorización de la SRE."], "ans": [1], "ref": "LSEM, art. 44, fracc. III y CVRC, art. 8. Requiere autorización expresa de la SRE y notificación/no oposición del Estado receptor."}, {"id": "LSEM-63", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "¿Cuál de las siguientes conductas constituye un incumplimiento directo a las obligaciones del artículo 43 de la LSEM y al Pronunciamiento de Cero Tolerancia citado en la Convocatoria 2026?", "opts": ["Solicitar tres cotizaciones para contratar un servicio de mantenimiento.", "Realizar actos de hostigamiento sexual, acoso sexual o discriminación por razón de género, origen étnico o condición migratoria contra compañeros de trabajo o personas usuarias.", "Transferir expedientes concluidos del archivo de trámite al archivo de concentración.", "Remitir el corte mensual del IMAR dentro de los plazos establecidos."], "ans": [1], "ref": "LSEM, arts. 1-TER y 43; Convocatoria 2026, Base V.2; Código de Conducta SRE."}, {"id": "LSEM-64", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "Si un agente diplomático mexicano provoca un accidente automovilístico en el país receptor conduciendo en estado de ebriedad fuera de sus funciones y se niega a cubrir los daños materiales alegando inmunidad, ¿qué puede hacer la SRE conforme a la LSEM?", "opts": ["Nada, porque la inmunidad lo protege de toda consecuencia.", "Iniciar procedimiento disciplinario por desacato a las leyes locales y desprestigio al Servicio Exterior, e incluso considerar la renuncia expresa a su inmunidad si procede.", "Pagar la multa con cargo a la caja chica de la Embajada.", "Transferirlo de inmediato a un puesto superior."], "ans": [1], "ref": "LSEM, arts. 43 fracc. III y 57; CVRD, arts. 32 y 41. La inmunidad no es impunidad; el incumplimiento de leyes locales genera responsabilidad disciplinaria."}, {"id": "LSEM-65", "sub": "2.8 Obligaciones y prohibiciones", "type": "single", "q": "¿Qué deber tienen los miembros del SEM respecto a la capacitación y actualización profesional que imparte el Instituto Matías Romero?", "opts": ["Es totalmente voluntaria y solo aplica para el personal de nuevo ingreso.", "Es un deber y derecho permanente del personal de carrera participar en los programas de formación, actualización y especialización que determine la Secretaría.", "Solo es obligatoria para quienes reprobaron un concurso de ascenso.", "Se realiza únicamente de manera presencial en el extranjero."], "ans": [1], "ref": "LSEM, arts. 4, 29 y 43; PSRE (tema 3.1.9). La profesionalización continua en el IMR es eje del servicio de carrera."}, {"id": "LSEM-66", "sub": "2.9 Régimen disciplinario", "type": "single", "q": "En el régimen disciplinario aplicable al personal del Servicio Exterior Mexicano, ¿cómo se deslinda la competencia entre la Subcomisión de Asuntos Disciplinarios (LSEM) y el Órgano Interno de Control / Tribunal Federal de Justicia Administrativa (LGRA)?", "opts": ["El Órgano Interno de Control fue sustituido por la Comisión de Personal y ya no interviene en la SRE.", "La Subcomisión de Asuntos Disciplinarios sustancia las infracciones específicas a la LSEM y su Reglamento, mientras que las faltas administrativas previstas en la LGRA (no graves y graves) son investigadas y sustanciadas por el OIC y sancionadas por éste o por el TFJA según su gravedad.", "Ambos órganos imponen doble sanción económica por exactamente el mismo hecho.", "Solo el Senado puede sancionar faltas administrativas del personal del SEM."], "ans": [1], "ref": "LSEM, arts. 56-62 y LGRA, arts. 3, 9, 10, 75 y 78. Coexisten el régimen disciplinario especial del SEM y el régimen general de responsabilidades administrativas."}, {"id": "LSEM-67", "sub": "2.9 Régimen disciplinario", "type": "single", "q": "Un Agregado Administrativo incurre en una falta administrativa NO grave (como omitir presentar en tiempo su declaración patrimonial inicial sin causa justificada). Conforme a la LGRA (art. 75), ¿qué sanciones puede imponerle el Órgano Interno de Control?", "opts": ["Únicamente multa económica de 500 UMAS.", "Amonestación pública o privada, suspensión del empleo/cargo/comisión (de 1 a 30 días naturales), destitución, o inhabilitación temporal (de 3 meses a 1 año).", "Inhabilitación de 10 a 20 años.", "Prisión preventiva oficiosa."], "ans": [1], "ref": "LGRA, art. 75. Sanciones por faltas no graves: amonestación, suspensión (1 a 30 días), destitución e inhabilitación temporal (3 meses a 1 año)."}, {"id": "LSEM-68", "sub": "2.9 Régimen disciplinario", "type": "single", "q": "Conforme a la LGRA (art. 78), cuando un servidor público comete una falta administrativa GRAVE (como peculado, cohecho o desvío de recursos) que NO causa daños o perjuicios económicos, o éstos no exceden de 200 veces el valor diario de la UMA, ¿cuál es el rango de inhabilitación temporal que impone el TFJA?", "opts": ["De 3 meses a 1 año.", "De 1 a 10 años.", "De 10 a 20 años.", "De 20 a 30 años."], "ans": [1], "ref": "LGRA, art. 78, fracc. IV. Para faltas graves: de 1 a 10 años si no hay afectación o ésta es $\\le$ 200 UMAS; de 10 a 20 años si excede de 200 UMAS."}, {"id": "LSEM-69", "sub": "2.9 Régimen disciplinario", "type": "double", "q": "Marque DOS opciones. Durante la sustanciación de un procedimiento disciplinario ante la Subcomisión de Asuntos Disciplinarios conforme a los artículos 58 a 61 de la LSEM, ¿qué garantías procesales asisten al miembro del SEM?", "opts": ["Ser notificado personalmente por escrito de los hechos que se le imputan y recibir copia de las constancias y pruebas existentes.", "Gozar de garantía de audiencia para ofrecer pruebas, formular alegatos por sí o por medio de representante y ser oído antes de que se emita dictamen.", "La resolución dictada por el Secretario de Relaciones Exteriores es definitiva e inatacable por cualquier vía judicial.", "El procedimiento puede concluirse con destitución sin haberle dado vista al interesado si se encuentra en el extranjero."], "ans": [0, 1], "ref": "LSEM, arts. 58-62. Se garantiza debido proceso (notificación, vista de pruebas, audiencia y alegatos) y la resolución admite recurso de revocación o juicio ante el TFJA."}, {"id": "LSEM-70", "sub": "2.9 Régimen disciplinario", "type": "single", "q": "En el procedimiento disciplinario de la LSEM, ¿quién emite finalmente la resolución administrativa sancionadora una vez que la Subcomisión de Asuntos Disciplinarios instruyó el expediente y la Comisión de Personal aprobó el dictamen?", "opts": ["El Presidente de la Subcomisión de Asuntos Disciplinarios.", "La persona titular de la Secretaría de Relaciones Exteriores.", "El Director General del Instituto Matías Romero.", "El Jefe de Misión donde ocurrió la falta."], "ans": [1], "ref": "LSEM, arts. 58 y 60. La Subcomisión instruye, la Comisión de Personal dictamina y el Secretario de Relaciones Exteriores resuelve."}, {"id": "LSEM-71", "sub": "2.9 Régimen disciplinario", "type": "single", "q": "¿Cuál es el plazo de prescripción de las facultades para imponer sanciones por faltas administrativas NO graves conforme al artículo 74 de la Ley General de Responsabilidades Administrativas?", "opts": ["1 año.", "3 años contados a partir del día siguiente al que se hubieren cometido las infracciones (o a partir del momento en que hubieren cesado).", "7 años.", "10 años."], "ans": [1], "ref": "LGRA, art. 74. Para faltas no graves prescribe en 3 años; para faltas graves o de particulares, en 7 años."}, {"id": "LSEM-72", "sub": "2.9 Régimen disciplinario", "type": "single", "q": "¿Cuál es el plazo de prescripción para las faltas administrativas GRAVES conforme al artículo 74 de la LGRA?", "opts": ["3 años.", "5 años.", "7 años contados a partir del día siguiente al que se hubieren cometido o hubieren cesado.", "Son imprescriptibles en todos los casos."], "ans": [2], "ref": "LGRA, art. 74, párrafo segundo. Las faltas administrativas graves prescriben en 7 años."}, {"id": "LSEM-73", "sub": "2.9 Régimen disciplinario", "type": "single", "q": "Un titular de consulado ordena al Agregado Administrativo tomar $2,000 dólares de la recaudación consular del día para pagar el mantenimiento urgente del aire acondicionado, prometiendo reponerlos cuando llegue la ministración mensual. Si el Agregado ejecuta la orden, ¿qué ocurre?", "opts": ["Queda exento de responsabilidad por obedecer a su superior jerárquico.", "Incurre en responsabilidad administrativa grave (desvío de recursos públicos / incumplimiento de la prohibición absoluta de usar la recaudación consular), pues ninguna orden superior justifica violar la ley.", "Es una práctica contable válida si se levanta un vale de caja.", "Solo responde el Cónsul General pero nunca el Agregado Administrativo."], "ans": [1], "ref": "LSEM, art. 57; LGRA, art. 54; Manual de Políticas y Normas Presupuestarias (Guía IMR, tema 6.8). Prohibición absoluta de usar recaudación consular para gastos."}, {"id": "LSEM-74", "sub": "2.9 Régimen disciplinario", "type": "single", "q": "Contra la resolución definitiva dictada por el Secretario de Relaciones Exteriores que impone una sanción disciplinaria conforme a la LSEM (art. 62), ¿qué plazo tiene el interesado para interponer el recurso de revocación?", "opts": ["Dentro de los 15 días hábiles siguientes a la fecha en que surta efectos la notificación de la resolución.", "Dentro de las 24 horas siguientes.", "Dentro de los 6 meses siguientes.", "No procede ningún recurso administrativo."], "ans": [0], "ref": "LSEM, art. 62 y LGRA, art. 210. El recurso de revocación se interpone dentro de los 15 días hábiles siguientes a que surta efectos la notificación."}, {"id": "LSEM-75", "sub": "2.10 Renuncia y reincorporación", "type": "single", "q": "Una Agregada Administrativa 'A' con 15 años de antigüedad en el SEM es invitada a trabajar como directora financiera en un organismo internacional (ONU) por 3 años. Para no perder su carrera en el SEM, ¿qué figura jurídica de la LSEM debe solicitar?", "opts": ["Renuncia con reserva de plaza.", "Autorización de separación temporal en situación de 'disponibilidad' conforme al artículo 52 de la LSEM.", "Licencia con goce de sueldo por comisión especial.", "Asimilación inversa."], "ans": [1], "ref": "LSEM, art. 52. La disponibilidad permite separarse temporalmente del servicio activo (hasta 6 años acumulados en toda la carrera) sin goce de sueldo ni antigüedad."}, {"id": "LSEM-76", "sub": "2.10 Renuncia y reincorporación", "type": "single", "q": "Un Consejero de carrera estuvo en situación de disponibilidad de 2018 a 2021 (3 años) y luego se reincorporó. En 2026 solicita un nuevo periodo de disponibilidad por 4 años adicionales. Conforme al artículo 52 de la LSEM, ¿procede su solicitud?", "opts": ["Sí, porque cada periodo de disponibilidad puede durar hasta 6 años de forma independiente.", "No por los 4 años completos; el límite máximo es de 6 años ACUMULADOS durante toda la carrera en el SEM, por lo que solo le restarían 3 años disponibles.", "No, porque la disponibilidad solo puede solicitarse una sola vez en la vida.", "Sí, siempre que renuncie a su rango de Consejero."], "ans": [1], "ref": "LSEM, art. 52. El tope de 6 años es ACUMULADO durante toda la carrera del funcionario."}, {"id": "LSEM-77", "sub": "2.10 Renuncia y reincorporación", "type": "single", "q": "¿Qué sucede si un miembro del SEM de carrera en situación de disponibilidad deja vencer el plazo autorizado sin presentar por escrito su solicitud de reincorporación al servicio activo?", "opts": ["Se prorroga automáticamente su disponibilidad hasta completar los 6 años.", "Se considerará que renuncia al Servicio Exterior Mexicano y causará baja definitiva del mismo.", "Se le impone únicamente una amonestación privada.", "Se le asigna una plaza en oficinas centrales de oficio."], "ans": [1], "ref": "LSEM, art. 52, último párrafo. No solicitar la reincorporación al vencimiento del plazo conlleva la baja definitiva por renuncia tácita."}, {"id": "LSEM-78", "sub": "2.10 Renuncia y reincorporación", "type": "double", "q": "Marque DOS opciones. Conforme a los artículos 53 y 54 de la LSEM, ¿cuáles son causas de baja definitiva del Servicio Exterior Mexicano de carrera?", "opts": ["Alcanzar la edad de retiro forzoso establecida en la ley (70 años).", "Renuncia voluntaria aceptada, destitución por resolución firme, incapacidad permanente o fallecimiento.", "Ser designado Subsecretario o Director General dentro de la propia Secretaría de Relaciones Exteriores.", "Permanecer en situación de disponibilidad por un periodo autorizado de 2 años."], "ans": [0, 1], "ref": "LSEM, arts. 17, 52, 53 y 54. Ser nombrado funcionario superior en la SRE conserva la plaza de carrera (art. 17) y la disponibilidad es separación temporal (art. 52)."}, {"id": "LSEM-79", "sub": "2.10 Renuncia y reincorporación", "type": "single", "q": "Un miembro del SEM de carrera es nombrado titular de una Unidad Administrativa (Director General) en oficinas centrales de la SRE. Tres años después concluye ese encargo directivo. Conforme al artículo 17 de la LSEM, ¿cuál es su situación laboral?", "opts": ["Queda desempleado y debe volver a concursar para ingresar al SEM.", "Se reincorpora plenamente a su plaza y rango de carrera en el SEM, conservando íntegra la antigüedad acumulada durante el desempeño de aquel cargo superior en la SRE.", "Se le computa ese tiempo como disponibilidad sin antigüedad.", "Asciende automáticamente dos rangos en el escalafón."], "ans": [1], "ref": "LSEM, art. 17. Los miembros del SEM de carrera designados para desempeñar cargos en la SRE conservan su calidad, rango y antigüedad."}, {"id": "LSEM-80", "sub": "2.10 Renuncia y reincorporación", "type": "single", "q": "Si un miembro del SEM de carrera adscrito en el extranjero presenta su renuncia voluntaria, ¿en qué momento surte efectos legales su separación del cargo?", "opts": ["En el instante en que envía el correo electrónico, pudiendo abandonar la oficina ese mismo día.", "A partir de la fecha en que la Secretaría le comunique la aceptación de la renuncia y una vez que haya realizado formalmente la entrega-recepción de los asuntos, documentos y bienes a su cargo.", "Únicamente cuando el Senado apruebe la renuncia.", "Al término del año fiscal el 31 de diciembre."], "ans": [1], "ref": "LSEM, arts. 43 fracc. VI y 53; RLSEM. Abandonar el puesto antes de la aceptación y entrega-recepción constituye abandono de empleo y responsabilidad administrativa."}]}, "b1_marco": {"title": "Bloque 1: Marco Jurídico e Institucional de la Política Exterior", "short": "B1 · Marco Jurídico (12 preg.)", "desc": "Principios constitucionales (Art. 89 fracc. X), atribuciones de la SRE (LOAPF art. 28), coordinación con la APF y planeación/indicadores.", "questions": [{"id": "B1-01", "sub": "1.1 Principios constitucionales", "type": "double", "q": "Marque DOS opciones. Conforme al artículo 89 fracción X de la Constitución, ¿cuáles son principios normativos que debe observar el Ejecutivo Federal al dirigir la política exterior?", "opts": ["La autodeterminación de los pueblos y la no intervención.", "La solución pacífica de controversias y la proscripción de la amenaza o el uso de la fuerza en las relaciones internacionales.", "La intervención humanitaria unilateral sin mandato del Consejo de Seguridad.", "La subordinación de los tratados de derechos humanos a los reglamentos administrativos."], "ans": [0, 1], "ref": "CPEUM, art. 89, fracc. X. Establece 8 principios normativos de política exterior."}, {"id": "B1-02", "sub": "1.1 Principios constitucionales", "type": "single", "q": "¿En qué año se incorporó expresamente 'el respeto, la protección y promoción de los derechos humanos' como octavo principio normativo de la política exterior en el artículo 89 fracción X constitucional?", "opts": ["En 1988, cuando se elevaron a rango constitucional los primeros siete principios.", "En 2011, con la reforma constitucional en materia de derechos humanos (DOF 10-06-2011).", "En 1917, en el texto original de Querétaro.", "En 2018, con la reforma a la Ley del Servicio Exterior Mexicano."], "ans": [1], "ref": "CPEUM, art. 89, fracc. X (Reforma DOF 10-06-2011)."}, {"id": "B1-03", "sub": "1.1 Principios constitucionales", "type": "single", "q": "El Gobierno de un Estado de la República pretende firmar un 'Tratado de Cooperación Fronteriza' con el Gobierno de Texas. Conforme al art. 117 fracc. I de la CPEUM y la Ley sobre la Celebración de Tratados, ¿qué procede?", "opts": ["Puede firmarlo libremente si lo aprueba el Congreso local del Estado.", "Tiene prohibido celebrar tratados o alianzas con potencias extranjeras (art. 117 CPEUM); únicamente puede celebrar un Acuerdo Interinstitucional en materias de su competencia local previo dictamen de procedencia de la SRE.", "Puede firmarlo siempre que lo ratifique el Senado de la República.", "No requiere intervención de la SRE por tratarse de un estado vecino."], "ans": [1], "ref": "CPEUM, art. 117 fracc. I; Ley sobre la Celebración de Tratados, arts. 2 fracc. II y 7."}, {"id": "B1-04", "sub": "1.2 Atribuciones de la SRE", "type": "single", "q": "Conforme al artículo 28 de la LOAPF, ¿a qué dependencia corresponde promover, propiciar y asegurar la coordinación de acciones en el exterior de las dependencias y entidades de la APF?", "opts": ["A la Secretaría de Gobernación.", "A la Secretaría de Relaciones Exteriores.", "A la Secretaría de Economía.", "A la Oficina de la Presidencia de la República."], "ans": [1], "ref": "LOAPF, art. 28, fracc. I."}, {"id": "B1-05", "sub": "1.2 Atribuciones de la SRE", "type": "double", "q": "Marque DOS opciones. De acuerdo con el artículo 28 de la LOAPF, ¿qué atribuciones corresponden a la Secretaría de Relaciones Exteriores?", "opts": ["Intervenir en toda clase de tratados, acuerdos y convenciones en los que el país sea parte.", "Coadyuvar a la promoción comercial y turística del país a través de sus embajadas y consulados.", "Expedir las resoluciones de adjudicación de concesiones mineras en territorio nacional.", "Aprobar definitivamente los tratados internacionales antes de su firma por el Ejecutivo."], "ans": [0, 1], "ref": "LOAPF, art. 28, fraccs. I y II-A."}, {"id": "B1-06", "sub": "1.2 Atribuciones de la SRE", "type": "single", "q": "En el Reglamento Interior de la Secretaría de Relaciones Exteriores (RISRE), ¿qué naturaleza jurídica tienen el Instituto Matías Romero (IMR), el IMME y la AMEXCID?", "opts": ["Organismos descentralizados con patrimonio propio.", "Órganos administrativos desconcentrados de la Secretaría de Relaciones Exteriores.", "Empresas de participación estatal mayoritaria.", "Fideicomisos públicos sin estructura orgánica."], "ans": [1], "ref": "RISRE y LOAPF, art. 17."}, {"id": "B1-07", "sub": "1.3 Coordinación con la APF", "type": "single", "q": "Conforme a la Ley sobre la Celebración de Tratados, cuando una secretaría de Estado pretende suscribir un Acuerdo Interinstitucional con un ministerio extranjero, ¿qué requisito es indispensable antes de firmarlo?", "opts": ["Obtener la aprobación del Senado por conducto de la SRE.", "Mantener informada a la SRE, la cual formulará el dictamen acerca de la procedencia de suscribirlo y, en su caso, lo inscribirá en el Registro respectivo.", "Pedir autorización a la Secretaría de Hacienda y Crédito Público.", "Publicarlo previamente en el Diario Oficial de la Federación."], "ans": [1], "ref": "Ley sobre la Celebración de Tratados, art. 7."}, {"id": "B1-08", "sub": "1.3 Coordinación con la APF", "type": "single", "q": "En el extranjero, ¿qué autoridad coordina las actividades de las agregadurías y oficinas de otras dependencias de la Administración Pública Federal adscritas en un país?", "opts": ["Cada agregado reporta únicamente a su secretaría en México con total independencia.", "El Jefe de Misión (Embajador), conforme a la LSEM y su Reglamento.", "El Cónsul Honorario de la ciudad.", "El Órgano Interno de Control."], "ans": [1], "ref": "LSEM, art. 12 y RLSEM, art. 14."}, {"id": "B1-09", "sub": "1.4 Planeación e indicadores", "type": "single", "q": "Conforme al artículo 21 de la Ley de Planeación, cuando la persona titular del Ejecutivo Federal toma posesión el 1 de octubre, ¿cuál es la fecha límite para enviar el Plan Nacional de Desarrollo a la Cámara de Diputados para su aprobación?", "opts": ["El 31 de diciembre del año en que toma posesión.", "El último día hábil de febrero del año siguiente a la toma de posesión.", "Seis meses naturales después de la toma de posesión.", "El 15 de abril del año siguiente."], "ans": [1], "ref": "Ley de Planeación, art. 21."}, {"id": "B1-10", "sub": "1.4 Planeación e indicadores", "type": "single", "q": "Una vez que la Cámara de Diputados aprueba el Plan Nacional de Desarrollo, ¿de qué plazo dispone el Ejecutivo Federal para publicarlo en el Diario Oficial de la Federación?", "opts": ["20 días naturales.", "60 días hábiles.", "5 días hábiles.", "6 meses."], "ans": [0], "ref": "Ley de Planeación, art. 21."}, {"id": "B1-11", "sub": "1.4 Planeación e indicadores", "type": "single", "q": "El indicador 2.1 del PSRE tuvo en 2024 una línea base de 15 acuerdos concertados de 38 programados. ¿Cuál es el valor de la línea base en porcentaje y qué dimensión evalúa?", "opts": ["25.3% — eficiencia.", "39.47% — eficacia (cumplimiento de metas respecto a lo programado).", "47.5% — calidad.", "60.5% — economía."], "ans": [1], "ref": "Indicador 2.1 PSRE: (15 ÷ 38) × 100 = 39.47%."}, {"id": "B1-12", "sub": "1.4 Planeación e indicadores", "type": "single", "q": "Un consulado expidió 2,400 pasaportes en enero, 2,700 en febrero y 3,000 en marzo. ¿Cuál fue la variación porcentual de los pasaportes expedidos entre enero y marzo?", "opts": ["20%", "25%", "12.5%", "600%"], "ans": [1], "ref": "Guía IMR 2026 (Pregunta modelo 7): ((3,000 - 2,400) ÷ 2,400) × 100 = 25%."}]}, "b3_coyuntura": {"title": "Bloque 3: Prioridades y Coyuntura (PND, PSRE, Movilidad, América del Norte, Multilateralismo y PEF)", "short": "B3 · PSRE y Coyuntura (16 preg.)", "desc": "PND y PSRE 2025-2030, estrategia México te abraza, América del Norte/T-MEC/CILA, CELAC/G20/MIKTA/Agenda 2030 y Política Exterior Feminista.", "questions": [{"id": "B3-01", "sub": "3.1 PND y PSRE 2025-2030", "type": "double", "q": "Marque DOS opciones. Conforme a la estructura del Plan Nacional de Desarrollo (PND) 2025-2030, ¿qué elementos alinean al Programa Sectorial de Relaciones Exteriores?", "opts": ["El Eje General 1: Gobernanza con justicia y participación ciudadana.", "Los tres Ejes Transversales: Igualdad sustantiva y derechos de las mujeres; Innovación pública para el desarrollo tecnológico nacional; y Derechos de los pueblos y comunidades indígenas y afromexicanas.", "El Eje General de Apertura Comercial Unilateral sin Reciprocidad.", "Un único eje transversal enfocado exclusivamente en defensa militar."], "ans": [0, 1], "ref": "PND 2025-2030 y PSRE 2025-2030 (tema 3.1.2)."}, {"id": "B3-02", "sub": "3.1 PND y PSRE 2025-2030", "type": "single", "q": "¿Cuál es el Objetivo Prioritario 1 del Programa Sectorial de Relaciones Exteriores (PSRE) 2025-2030?", "opts": ["Ampliar la red de tratados de libre comercio con Europa y Asia.", "Revalorizar el fenómeno migratorio y garantizar los derechos de las personas mexicanas en el exterior mediante servicios consulares, protección y fortalecimiento de sus comunidades.", "Construir nuevas embajadas en Oceanía.", "Sustituir las oficinas consulares por consulados honorarios."], "ans": [1], "ref": "PSRE 2025-2030 (tema 3.1.3)."}, {"id": "B3-03", "sub": "3.1 PND y PSRE 2025-2030", "type": "single", "q": "Cuando la SRE articula el trabajo conjunto de secretarías como Salud, Economía o Cultura con las representaciones de México en el exterior, ¿a qué objetivo del PSRE responde?", "opts": ["Objetivo 5: Fortalecer la coordinación intersectorial entre la Administración Pública Federal y la diplomacia.", "Objetivo 3: Presencia ante cortes y tribunales internacionales.", "Objetivo 1: Atención consular de emergencia.", "Objetivo 6: Capacitación interna del Servicio Exterior."], "ans": [0], "ref": "PSRE 2025-2030 (temas 3.1.3 y 3.1.9)."}, {"id": "B3-04", "sub": "3.1 PND y PSRE 2025-2030", "type": "single", "q": "Tras el paso de un huracán por un país del Caribe, el Gobierno de México envía ayuda humanitaria a la población afectada. ¿Qué principio constitucional y qué órgano desconcentrado de la SRE se vinculan con esa acción?", "opts": ["La no intervención; el Instituto de Mexicanas y Mexicanos en el Exterior.", "La cooperación internacional para el desarrollo; la Agencia Mexicana de Cooperación Internacional para el Desarrollo (AMEXCID).", "La autodeterminación de los pueblos; el Instituto Matías Romero.", "La igualdad jurídica de los Estados; la Secretaría de Gobernación."], "ans": [1], "ref": "Guía IMR 2026 (Pregunta modelo 10); CPEUM art. 89 fracc. X y LCID."}, {"id": "B3-05", "sub": "3.2 Movilidad humana", "type": "single", "q": "¿Qué estrategia interinstitucional del Gobierno de México articula la recepción y atención integral en territorio nacional de las personas mexicanas repatriadas desde Estados Unidos?", "opts": ["Consulados de Puertas Abiertas.", "México te abraza.", "Programa Paisano Financiero.", "Red Global MX."], "ans": [1], "ref": "PSRE 2025-2030 y Guía IMR (temas 3.2.1 y 7.6)."}, {"id": "B3-06", "sub": "3.2 Movilidad humana", "type": "double", "q": "Marque DOS opciones. ¿Qué ejes caracterizan el Modelo Humanitario de Movilidad Humana impulsado por México?", "opts": ["Atención a las causas estructurales de la migración mediante programas de desarrollo en comunidades de origen (como Sembrando Vida y Jóvenes Construyendo el Futuro).", "Gestión migratoria humana, integral y regional en todas las etapas del ciclo migratorio (origen, tránsito, destino y retorno), fomentando vías regulares.", "Criminalización del ingreso irregular y deportación sumaria sin derecho a solicitar refugio.", "Subordinación de la política migratoria mexicana a las leyes internas de terceros países."], "ans": [0, 1], "ref": "PSRE 2025-2030 (temas 3.2.1 a 3.2.4)."}, {"id": "B3-07", "sub": "3.3 América del Norte", "type": "single", "q": "En la agenda bilateral con Estados Unidos (tema 3.3.2 de la Guía IMR), ¿qué acción jurídica internacional ha emprendido México contra el tráfico ilícito de armas?", "opts": ["Litigios estratégicos ante tribunales estadounidenses contra fabricantes y vendedores de armas por prácticas negligentes que facilitan su tráfico hacia México.", "La denuncia del Tratado de Guadalupe Hidalgo.", "La imposición de aranceles del 100% a productos agrícolas estadounidenses.", "La suspensión de todas las extradiciones bilaterales."], "ans": [0], "ref": "PSRE 2025-2030 y Guía IMR (tema 3.3.2)."}, {"id": "B3-08", "sub": "3.3 América del Norte", "type": "single", "q": "¿Qué organismo binacional es responsable de aplicar los tratados de límites y aguas y gestionar los recursos hídricos compartidos en la frontera entre México y Estados Unidos?", "opts": ["La Comisión Internacional de Límites y Aguas (CILA).", "La Agencia Latinoamericana y Caribeña del Espacio (ALCE).", "La Alianza México-Canadá.", "El Consejo de Cooperación del Golfo."], "ans": [0], "ref": "Guía IMR (tema 3.3.5)."}, {"id": "B3-09", "sub": "3.4 Multilateralismo", "type": "single", "q": "En el ámbito de la reforma del sistema de las Naciones Unidas (tema 3.4.2 de la Guía IMR), ¿cuál es la postura histórica de México respecto al Consejo de Seguridad?", "opts": ["Ampliar los miembros permanentes con derecho de veto incluyendo a México.", "Impulsar una reforma integral que amplíe los miembros no permanentes y restrinja el uso del derecho de veto ante casos de atrocidades masivas.", "Disolver el Consejo de Seguridad y trasladar sus funciones al G20.", "Mantener sin cambios la estructura de 1945."], "ans": [1], "ref": "PSRE 2025-2030 y Guía IMR (tema 3.4.2)."}, {"id": "B3-10", "sub": "3.4 Multilateralismo", "type": "single", "q": "¿Qué países integran el espacio de concertación informal MIKTA junto con México?", "opts": ["Malasia, India, Kuwait, Tailandia y Argentina.", "Indonesia, la República de Corea, Turquía y Australia.", "Marruecos, Italia, Kenia, Túnez y Alemania.", "Moldavia, Irlanda, Kazajistán, Tayikistán y Austria."], "ans": [1], "ref": "Guía IMR, Glosario y tema 3.4.6."}, {"id": "B3-11", "sub": "3.4 Multilateralismo", "type": "double", "q": "Marque DOS opciones. Respecto a la Comunidad de Estados Latinoamericanos y Caribeños (CELAC), ¿qué afirmaciones son correctas?", "opts": ["Es un mecanismo intergubernamental de diálogo y concertación política integrado por los 33 países de América Latina y el Caribe (sin Estados Unidos ni Canadá) que adopta sus acuerdos por consenso.", "En su marco México ha impulsado proyectos regionales como la Agencia Latinoamericana y Caribeña del Espacio (ALCE) y la autosuficiencia sanitaria.", "Cuenta con un Consejo de Seguridad con poder de veto y fuerzas armadas permanentes.", "Sus decisiones se toman por mayoría simple de 17 votos."], "ans": [0, 1], "ref": "Guía IMR (temas 3.1.5 y 3.4.5)."}, {"id": "B3-12", "sub": "3.4 Multilateralismo", "type": "single", "q": "¿Qué resolución de la Asamblea General de la ONU aprobó la Agenda 2030 para el Desarrollo Sostenible y sus 17 Objetivos de Desarrollo Sostenible (ODS)?", "opts": ["Resolución 70/1 (2015).", "Resolución 242 (1967).", "Resolución 1514 (1960).", "Resolución 1325 (2000)."], "ans": [0], "ref": "Guía IMR, sección IV (fuente 58/53)."}, {"id": "B3-13", "sub": "3.5 Política Exterior Feminista", "type": "single", "q": "¿Cuál es la naturaleza de la Política Exterior Feminista (PEF) de México conforme a los Principios Rectores y el PSRE 2025-2030?", "opts": ["Un programa exclusivo de becas para mujeres diplomáticas.", "Una estrategia transversal de la SRE que orienta los ámbitos multilateral, bilateral, regional, de cooperación, diplomacia pública y atención consular hacia la igualdad sustantiva.", "Una dirección general encargada únicamente de asuntos familiares.", "Un tratado comercial con países europeos."], "ans": [1], "ref": "PSRE 2025-2030 y Guía IMR (temas 3.5.1 y 3.5.2)."}, {"id": "B3-14", "sub": "3.5 Política Exterior Feminista", "type": "single", "q": "¿Qué Recomendación General del Comité de la CEDAW (citada expresamente en la Guía IMR 2026) protege de manera específica los derechos de las mujeres y las niñas indígenas frente a la discriminación interseccional?", "opts": ["Recomendación General 39.", "Recomendación General 1.", "Recomendación General 12.", "Recomendación General 5."], "ans": [0], "ref": "Guía IMR (tema 3.5.6) y Convocatoria 2026."}, {"id": "B3-15", "sub": "3.5 Política Exterior Feminista", "type": "single", "q": "¿Qué convención interamericana especializada en prevenir, sancionar y erradicar la violencia contra la mujer forma parte del marco jurídico de la Política Exterior Feminista de México?", "opts": ["Convención de Belém do Pará (1994).", "Convención de Caracas sobre Asilo Territorial (1954).", "Pacto de Bogotá (1948).", "Convención de Montego Bay (1982)."], "ans": [0], "ref": "Guía IMR (tema 3.5.6)."}, {"id": "B3-16", "sub": "3.5 Política Exterior Feminista", "type": "single", "q": "¿Qué certificación en Igualdad Laboral y No Discriminación ostenta la Secretaría de Relaciones Exteriores mencionada en la Convocatoria 2026?", "opts": ["Norma Mexicana NMX-R-025-SCFI-2015 con certificación nivel ORO.", "Norma ISO 9001 nivel Platino.", "Sello Verde de Sustentabilidad Administrativa.", "Certificación CONOCER en Atención Consular."], "ans": [0], "ref": "Convocatoria RTA 2026 (DOF 20-10-2026)."}]}, "b4_diplomatico": {"title": "Bloque 4: Derecho Diplomático (Convención de Viena de 1961 y Asilo)", "short": "B4 · Der. Diplomático (12 preg.)", "desc": "Funciones de la misión, persona non grata, inviolabilidades (locales, archivos, residencia), valija diplomática, inmunidades y asilo.", "questions": [{"id": "B4-01", "sub": "4.1 Funciones de la misión", "type": "single", "q": "Conforme a la Convención de Viena sobre Relaciones Diplomáticas (CVRD), ¿qué ocurre si el Estado receptor niega el asentimiento (beneplácito) a una persona propuesta como Jefe de Misión?", "opts": ["Debe presentar un informe jurídico detallado justificando su negativa.", "No está obligado a expresar al Estado acreditante los motivos de su negativa.", "Se rompen automáticamente las relaciones diplomáticas entre ambos Estados.", "El Estado acreditante puede enviarlo de todos modos como Embajador."], "ans": [1], "ref": "CVRD, art. 4, párr. 2."}, {"id": "B4-02", "sub": "4.1 Funciones de la misión", "type": "single", "q": "Conforme al artículo 9 de la CVRD, ¿en qué momento puede el Estado receptor declarar 'persona non grata' al jefe de misión o a cualquier miembro del personal diplomático?", "opts": ["Únicamente después de haber presentado sus cartas credenciales y cometido un delito.", "En cualquier momento y sin tener que exponer los motivos de su decisión, incluso antes de su llegada al territorio del Estado receptor.", "Solo previa autorización de la Corte Internacional de Justicia.", "Únicamente al concluir su periodo de 4 años."], "ans": [1], "ref": "CVRD, art. 9, párr. 1."}, {"id": "B4-03", "sub": "4.2 Inviolabilidades", "type": "single", "q": "Se produce un incendio dentro de la sede de una Embajada. Conforme al artículo 22 de la CVRD, ¿pueden los bomberos o la policía del Estado receptor ingresar sin el consentimiento expreso del Jefe de Misión?", "opts": ["Sí, porque la CVRD presume el consentimiento del jefe de misión en caso de incendio.", "No; la inviolabilidad de los locales de la misión diplomática es absoluta y los agentes del Estado receptor no pueden penetrar en ellos sin consentimiento del Jefe de Misión.", "Sí, siempre que cuenten con orden de un juez local.", "Sí, si el incendio ocurre fuera del horario laboral."], "ans": [1], "ref": "CVRD, art. 22, párr. 1. A diferencia de la Convención Consular (art. 31.2), la CVRD NO contempla el consentimiento presunto en caso de incendio."}, {"id": "B4-04", "sub": "4.2 Inviolabilidades", "type": "single", "q": "La policía de un país europeo pretende registrar el departamento particular de un Agregado Administrativo de la Embajada de México (no nacional ni residente permanente del Estado receptor). ¿Qué dispone la CVRD?", "opts": ["Puede ingresar con orden judicial local.", "La residencia es inviolable, porque la Convención extiende al personal administrativo y técnico los privilegios de los artículos 29 a 35, entre ellos la inviolabilidad de la residencia particular.", "Solo es inviolable si el inmueble es propiedad del Estado mexicano.", "El personal administrativo no goza de inviolabilidad en su domicilio."], "ans": [1], "ref": "CVRD, arts. 30 párr. 1 y 37 párr. 2; Guía IMR (Pregunta modelo 4)."}, {"id": "B4-05", "sub": "4.2 Inviolabilidades", "type": "single", "q": "¿Qué caso de 2024 citado expresamente en la Guía IMR 2026 motivó una demanda de México ante la Corte Internacional de Justicia por violación al artículo 22 de la CVRD?", "opts": ["La incursión policial en la Embajada de México en Quito, Ecuador (abril de 2024).", "La toma de rehenes en Teherán (1979).", "El caso Avena y otros nacionales mexicanos (2004).", "El asilo diplomático en La Paz (2019)."], "ans": [0], "ref": "Guía IMR (tema 4.2.6 y fuente 57/52)."}, {"id": "B4-06", "sub": "4.3 Valija diplomática", "type": "double", "q": "Marque DOS opciones. Conforme al artículo 27 de la CVRD, ¿qué reglas rigen la valija diplomática?", "opts": ["La valija diplomática no podrá ser abierta ni retenida en ningún caso.", "Los bultos que constituyan la valija diplomática deberán ir provistos de signos exteriores visibles indicadores de su carácter y solo podrán contener documentos diplomáticos u objetos de uso oficial.", "Si las autoridades aduaneras tienen sospechas fundadas, pueden exigir que se abra en presencia de un representante autorizado.", "El comandante de una aeronave comercial a quien se confía la valija adquiere automáticamente el estatus de correo diplomático."], "ans": [0, 1], "ref": "CVRD, art. 27, párrs. 3, 4 y 7."}, {"id": "B4-07", "sub": "4.4 Inmunidades según categoría", "type": "single", "q": "Conforme al artículo 31 de la CVRD, el agente diplomático goza de inmunidad de la jurisdicción civil y administrativa del Estado receptor, EXCEPTO en tres casos. ¿Cuál de los siguientes ES una excepción?", "opts": ["Una acción real sobre bienes inmuebles particulares radicados en el territorio del Estado receptor (salvo que los posea por cuenta del Estado acreditante para los fines de la misión).", "Una multa de tránsito cometida camino a una reunión oficial.", "Un contrato de arrendamiento de las oficinas de la Embajada.", "La publicación de un comunicado oficial de la misión."], "ans": [0], "ref": "CVRD, art. 31, párr. 1."}, {"id": "B4-08", "sub": "4.4 Inmunidades según categoría", "type": "single", "q": "¿Qué diferencia crucial establece el artículo 37 de la CVRD entre la inmunidad de jurisdicción de un Agente Diplomático y la de un miembro del Personal Administrativo y Técnico (como un Agregado Administrativo)?", "opts": ["El personal administrativo y técnico tiene inmunidad penal absoluta, pero su inmunidad civil y administrativa se limita únicamente a los actos realizados en el desempeño de sus funciones.", "El personal administrativo y técnico carece por completo de inmunidad penal.", "Ambos tienen exactamente la misma inmunidad civil tanto para actos públicos como privados.", "El personal administrativo y técnico solo tiene inmunidad fiscal pero no jurisdiccional."], "ans": [0], "ref": "CVRD, art. 37, párr. 2."}, {"id": "B4-09", "sub": "4.4 Inmunidades según categoría", "type": "single", "q": "Si el Estado acreditante renuncia expresamente a la inmunidad de jurisdicción de un agente diplomático en un litigio civil y se dicta sentencia condenatoria, ¿basta esa renuncia para embargar sus bienes?", "opts": ["Sí, la renuncia a la inmunidad de jurisdicción conlleva implícitamente la renuncia a la inmunidad de ejecución.", "No; conforme al artículo 32 párrafo 4 de la CVRD, la renuncia a la inmunidad de jurisdicción no entraña la renuncia a la inmunidad en cuanto a la ejecución del fallo, para lo cual será necesaria una nueva renuncia.", "Sí, si el monto de la condena es inferior a 10,000 dólares.", "Solo el propio agente diplomático puede renunciar válidamente a su inmunidad."], "ans": [1], "ref": "CVRD, art. 32, párrs. 1 y 4."}, {"id": "B4-10", "sub": "4.4 Inmunidades según categoría", "type": "single", "q": "Una Agregada Administrativa concluye su adscripción en una embajada y regresa a México. Dos años después es demandada en aquel país por un contrato de mantenimiento que firmó en nombre de la Embajada. ¿Subsiste su inmunidad?", "opts": ["No, cesó por completo al salir del país.", "La inmunidad subsiste respecto de los actos que realizó en el ejercicio de sus funciones como parte de la Embajada.", "Sí, pero solo si presenta un acuerdo bilateral de reciprocidad.", "Subsiste tanto para sus actos oficiales como para sus deudas privadas."], "ans": [1], "ref": "CVRD, art. 39, párr. 2; Guía IMR (Pregunta modelo 6)."}, {"id": "B4-11", "sub": "4.5 Deberes y asilo", "type": "single", "q": "Conforme a la Convención sobre Asilo Diplomático (Caracas, 1954), ¿a quién corresponde calificar la naturaleza del delito o de los motivos de la persecución para conceder asilo diplomático?", "opts": ["Al Estado territorial que reclama al perseguido.", "Al Estado asilante.", "Al Secretario General de la OEA.", "A la Corte Interamericana de Derechos Humanos."], "ans": [1], "ref": "Convención sobre Asilo Diplomático (Caracas, 1954), art. IV."}, {"id": "B4-12", "sub": "4.5 Deberes y asilo", "type": "single", "q": "Otorgado el asilo diplomático en una embajada en caso de urgencia y por persecución política, ¿qué documento debe expedir el Estado territorial una vez que el Estado asilante solicita la salida del asilado hacia el extranjero?", "opts": ["El exequátur.", "El salvoconducto y las garantías necesarias para que salga del país.", "La carta patente.", "El beneplácito."], "ans": [1], "ref": "Convención sobre Asilo Diplomático, arts. V, VI y XII."}]}, "b5_consular": {"title": "Bloque 5: Derecho Consular (Convención de Viena de 1963 y Cónsules Honorarios)", "short": "B5 · Der. Consular (12 preg.)", "desc": "Oficinas consulares, notificación consular (art. 36 CVRC y fallo Avena), valija consular vs diplomática, inmunidades y cónsules honorarios.", "questions": [{"id": "B5-01", "sub": "5.1 Funciones consulares", "type": "single", "q": "Conforme al artículo 2 párrafo 3 de la Convención de Viena sobre Relaciones Consulares (CVRC), ¿qué efecto produce la ruptura de relaciones diplomáticas entre dos Estados sobre las relaciones consulares?", "opts": ["Produce automática e inmediatamente la ruptura de las relaciones consulares.", "No entraña ipso facto la ruptura de las relaciones consulares.", "Convierte a los cónsules de carrera en cónsules honorarios.", "Obliga a cerrar todos los consulados en un plazo de 48 horas."], "ans": [1], "ref": "CVRC, art. 2, párr. 3."}, {"id": "B5-02", "sub": "5.2 Notificación consular", "type": "single", "q": "Un connacional es arrestado por la policía local en Estados Unidos. Conforme al artículo 36 párrafo 1 inciso b) de la CVRC, ¿qué deberes tienen las autoridades del Estado receptor?", "opts": ["Avisar al consulado mexicano automáticamente sin importar si el detenido se opone.", "Informar sin dilación al detenido de su derecho a la notificación consular y, si el interesado lo solicita, avisar sin retraso a la oficina consular competente.", "Avisar al consulado únicamente después de que se dicte sentencia condenatoria.", "Negar el acceso consular mientras dure la investigación policial."], "ans": [1], "ref": "CVRC, art. 36, párr. 1, incisos b) y c)."}, {"id": "B5-03", "sub": "5.2 Notificación consular", "type": "single", "q": "¿Qué determinó la Corte Internacional de Justicia en el fallo del caso 'Avena y otros nacionales mexicanos (México c. Estados Unidos de América)' del 31 de marzo de 2004?", "opts": ["Que Estados Unidos violó sus obligaciones conforme al artículo 36 de la CVRC al no informar sin dilación a los detenidos mexicanos de sus derechos consulares ni notificar a los consulados, ordenando la revisión y reconsideración de los veredictos y penas.", "Que la notificación consular es opcional en casos de pena de muerte.", "Que los consulados pueden actuar como abogados litigantes en tribunales penales estadounidenses.", "Que la CVRC solo aplica a turistas y no a residentes permanentes."], "ans": [0], "ref": "CIJ, Caso Avena (31-03-2004); Guía IMR (tema 7.2 y fuente 56)."}, {"id": "B5-04", "sub": "5.2 Notificación consular", "type": "single", "q": "Un connacional fallece en un accidente de tránsito en una ciudad de Estados Unidos. Conforme a la CVRC (art. 37 inc. a), ¿qué obligación tienen las autoridades locales?", "opts": ["Informar sin retraso a la oficina consular en cuya circunscripción ocurrió el fallecimiento.", "Informar al consulado solo si la familia del connacional lo solicita.", "Informar al consulado solo cuando concluya la investigación judicial del accidente.", "Informar únicamente a la Embajada de México por conducto del Departamento de Estado."], "ans": [0], "ref": "Guía IMR 2026 (Pregunta modelo 2); CVRC, art. 37 inc. a)."}, {"id": "B5-05", "sub": "5.3 Valija consular", "type": "single", "q": "¿Cuál es la diferencia fundamental entre la inviolabilidad de la valija diplomática (CVRD art. 27) y la de la valija consular (CVRC art. 35)?", "opts": ["Ninguna; ambas tienen exactamente el mismo régimen absoluto.", "La valija diplomática no puede ser abierta ni retenida en ningún caso; en la valija consular, si las autoridades del Estado receptor tienen razones fundadas para creer que contiene algo distinto a correspondencia/objetos oficiales, pueden pedir que sea abierta en su presencia por un representante autorizado del Estado que envía, y si este se niega, la valija será devuelta a su lugar de origen.", "La valija consular puede ser abierta libremente por cualquier agente aduanal sin testigos.", "La valija diplomática requiere permiso aduanal y la consular no."], "ans": [1], "ref": "CVRD, art. 27 párr. 3 vs. CVRC, art. 35 párr. 3."}, {"id": "B5-06", "sub": "5.4 Inmunidades y privilegios", "type": "single", "q": "Se desata un incendio en el área de atención al público de un Consulado de carrera de México en el extranjero. Conforme al artículo 31 párrafo 2 de la CVRC, ¿qué sucede respecto a la inviolabilidad de los locales consulares?", "opts": ["La inviolabilidad abarca todo el edificio, incluida la residencia del Cónsul, sin excepción alguna.", "La inviolabilidad se limita a la parte de los locales consulares que se utilice exclusivamente para el trabajo de la oficina consular, y se presumirá el consentimiento del jefe de oficina en caso de incendio o de otra calamidad que requiera la adopción inmediata de medidas de protección.", "La policía local puede entrar en cualquier momento a revisar los archivos consulares.", "Los locales consulares carecen por completo de inviolabilidad."], "ans": [1], "ref": "CVRC, art. 31, párrs. 1 y 2."}, {"id": "B5-07", "sub": "5.4 Inmunidades y privilegios", "type": "single", "q": "¿En qué caso puede ser detenido o puesto en prisión preventiva un funcionario consular de carrera conforme al artículo 41 de la CVRC?", "opts": ["En ningún caso, goza de inmunidad penal absoluta como un embajador.", "Únicamente cuando se trate de un delito grave y por decisión de la autoridad judicial competente.", "Por cualquier falta administrativa o infracción de tránsito.", "Por orden directa del jefe de la policía municipal."], "ans": [1], "ref": "CVRC, art. 41, párr. 1."}, {"id": "B5-08", "sub": "5.4 Inmunidades y privilegios", "type": "double", "q": "Marque DOS opciones. Conforme al artículo 43 de la CVRC, los funcionarios y empleados consulares gozan de inmunidad de jurisdicción por los actos ejecutados en el ejercicio de sus funciones consulares, EXCEPTO en dos acciones civiles:", "opts": ["Una acción civil que resulte de un contrato que no haya concertado explícita o implícitamente como agente del Estado que envía.", "Una acción civil entablada por un tercero como consecuencia de daños causados por un accidente de vehículo, buque o aeronave ocurrido en el Estado receptor.", "Una demanda laboral interpuesta por un empleado local contratado por el consulado.", "Una reclamación sobre el cobro de derechos consulares establecidos en la Ley Federal de Derechos."], "ans": [0, 1], "ref": "CVRC, art. 43, párr. 2, incisos a) y b)."}, {"id": "B5-09", "sub": "5.4 Inmunidades y privilegios", "type": "double", "q": "Marque DOS opciones. Un empleado del Consulado de México en Toronto presenció un domingo, fuera de sus funciones, un accidente de tránsito. Un tribunal civil local lo cita para declarar como testigo. Conforme al art. 44 de la CVRC:", "opts": ["Puede ser llamado a comparecer como testigo en el procedimiento judicial.", "Como empleado consular, no puede negarse a declarar sobre hechos ajenos a sus funciones.", "Goza de la misma exención de declarar como testigo que un agente diplomático.", "Puede ser obligado a exhibir la correspondencia oficial del consulado relacionada con el caso."], "ans": [0, 1], "ref": "Guía IMR 2026 (Pregunta modelo 3); CVRC, art. 44, párrs. 1 y 3."}, {"id": "B5-10", "sub": "5.5 Cónsules honorarios", "type": "single", "q": "Conforme a la Ley del Servicio Exterior Mexicano y la CVRC, ¿cuál es el estatus de los Cónsules Honorarios de México?", "opts": ["Forman parte del Servicio Exterior Mexicano de carrera en el rango de Primer Secretario.", "No forman parte del Servicio Exterior Mexicano ni perciben sueldo o remuneración alguna con cargo al erario, y auxilian en funciones de documentación y protección en la forma que autorice la SRE.", "Son personal temporal contratado por 6 años con pasaporte diplomático.", "Deben ser obligatoriamente mexicanos por nacimiento sin otra nacionalidad."], "ans": [1], "ref": "LSEM, art. 22; RLSEM; CVRC, arts. 58-68."}, {"id": "B5-11", "sub": "5.5 Cónsules honorarios", "type": "single", "q": "¿Bajo qué condición gozan de inviolabilidad los archivos y documentos consulares de una oficina dirigida por un Cónsul Honorario conforme al artículo 61 de la CVRC?", "opts": ["En todos los casos, aunque estén mezclados con sus papeles comerciales privados.", "Siempre que estén separados de otros papeles y documentos y, en especial, de la correspondencia particular del jefe de la oficina consular y de los bienes, libros o documentos referentes a su profesión o comercio.", "Los archivos de un consulado honorario nunca son inviolables.", "Únicamente si la oficina tiene más de 10 empleados."], "ans": [1], "ref": "CVRC, art. 61."}, {"id": "B5-12", "sub": "5.5 Cónsules honorarios", "type": "single", "q": "En materia de inviolabilidad de los locales de una oficina consular dirigida por un Cónsul Honorario (CVRC art. 59), ¿cuál es la obligación del Estado receptor?", "opts": ["Los locales tienen la misma inviolabilidad absoluta que una embajada.", "El Estado receptor adoptará las medidas necesarias para proteger los locales consulares contra toda intrusión o daño y para evitar que se perturbe la tranquilidad de la oficina o se atente contra su dignidad.", "El Estado receptor no tiene obligación alguna respecto a los locales de un cónsul honorario.", "Los locales están exentos de todo impuesto municipal aunque sean propiedad privada del cónsul honorario."], "ans": [1], "ref": "CVRC, arts. 59 y 60."}]}, "b6_espanol": {"title": "Bloque 6: Examen de Conocimientos del Español Escrito (Ortografía y Gramática)", "short": "B6 · Español Escrito (12 preg.)", "desc": "Reactivos basados en la Guía Oficial de Español Escrito IMR (grafías problemáticas, acentuación, puntuación, queísmo/dequeísmo y concordancia).", "questions": [{"id": "ESP-01", "sub": "1.12 Grafías problemáticas", "type": "single", "q": "Elija la oración que emplea correctamente las grafías 'por qué', 'porque', 'porqué' o 'por que':", "opts": ["No comprendo el por qué de tu negativa a firmar el acta.", "Los funcionarios votaron por que se ampliara el horario de atención consular.", "Dime porque no enviaste el informe mensual a tiempo.", "No asistió a la reunión por qué estaba en comisión oficial."], "ans": [1], "ref": "Guía Español Escrito IMR, p. 1. 'Por que' (preposición + conjunción) es correcto en 'votaron por que se ampliara...'."}, {"id": "ESP-02", "sub": "1.12 Grafías problemáticas", "type": "single", "q": "¿En cuál de las siguientes oraciones está correctamente escrita la secuencia 'asimismo', 'así mismo' o 'a sí mismo'?", "opts": ["El cónsul presentó el informe; así mismo, entregó las estadísticas trimestrales.", "El titular se perjudicó asimismo al omitir el aviso reglamentario.", "La representación envió los pasaportes y, asimismo, remitió la relación de formas numeradas.", "Coloca el sello sobre el documento; hazlo a sí mismo como te indiqué."], "ans": [2], "ref": "Guía Español Escrito IMR, p. 1."}, {"id": "ESP-03", "sub": "5. Acentuación y casos especiales", "type": "double", "q": "Marque DOS opciones. Conforme a las reglas de acentuación de la RAE incluidas en la Guía IMR, ¿cuáles de las siguientes afirmaciones son correctas?", "opts": ["Los compuestos sin guion pierden la tilde del primer elemento si la llevaba (ejemplo: decimocuarto), mientras que en los compuestos con guion cada elemento conserva su acentuación original (ejemplo: lógico-matemático).", "Las siglas escritas enteramente en mayúsculas nunca llevan tilde (CIA, OTAN), pero los acrónimos lexicalizados escritos en minúsculas o solo con mayúscula inicial sí se tildan según las reglas generales (láser, Fundéu).", "Las palabras mayúsculas están exentas de llevar tilde ortográfica.", "Los plurales 'examenes' y 'jovenes' conservan la ausencia de tilde de sus singulares."], "ans": [0, 1], "ref": "Guía Español Escrito IMR, pp. 5-6."}, {"id": "ESP-04", "sub": "5.3 Acento diacrítico", "type": "single", "q": "Identifique la oración que aplica correctamente la tilde diacrítica y enfática:", "opts": ["Aún los funcionarios con mayor antigüedad tuvieron dudas sobre cuando aplicaría la norma.", "Aun sabiendo los riesgos, el equipo viajó a la zona afectada; aún no han regresado.", "Dime que documentos faltan para integrar el expediente de protección.", "El informó que sí asistirá, mas no precisó a que hora."], "ans": [1], "ref": "Guía Español Escrito IMR, pp. 4-6."}, {"id": "ESP-05", "sub": "6. Signos de puntuación", "type": "single", "q": "¿Cuál de las siguientes oraciones presenta una puntuación correcta conforme a la Guía IMR?", "opts": ["Los agregados administrativos que aprobaron el curso, tomaron posesión ayer.", "Contrataron nuevo personal consular; por lo tanto, disminuirá el tiempo de espera.", "Estimado Cónsul General, le remitimos el corte mensual.", "Juan tramitó su pasaporte y su hermana su matrícula consular."], "ans": [1], "ref": "Guía Español Escrito IMR, pp. 7-9."}, {"id": "ESP-06", "sub": "2.3 Plural de palabras compuestas", "type": "single", "q": "Conforme a la Guía de Español Escrito del IMR, ¿cuál es el plural correcto de los siguientes sustantivos compuestos?", "opts": ["sofás camas, coches bombas, rayos lásers", "sofás cama, coches bomba, rayos láser", "sofá camas, coche bombas, rayo láseres", "sofases cama, coches bombas, rayos láser"], "ans": [1], "ref": "Guía Español Escrito IMR, p. 12."}, {"id": "ESP-07", "sub": "3.5 Gerundio mal usado", "type": "single", "q": "La Guía IMR proscribe el uso del gerundio con valor de adjetivo especificativo. ¿Cuál de las siguientes opciones corrige adecuadamente ese error?", "opts": ["Se envió una valija conteniendo documentos confidenciales.", "Se envió una valija que contiene documentos confidenciales.", "Se publicó un decreto reformando la Ley del Servicio Exterior.", "Llegó un oficio solicitando la conciliación bancaria."], "ans": [1], "ref": "Guía Español Escrito IMR, p. 13."}, {"id": "ESP-08", "sub": "4. Queísmo y dequeísmo", "type": "single", "q": "¿Cuál de las siguientes oraciones está libre tanto de queísmo como de dequeísmo?", "opts": ["El titular informó de que la reunión se pospondría para el lunes.", "Estoy convencida que la coordinación interinstitucional fortalecerá la atención.", "La funcionaria se acordó de que debía cerrar la conciliación antes del día cinco.", "La Subcomisión consideró de que el expediente estaba completo."], "ans": [2], "ref": "Guía Español Escrito IMR, p. 14."}, {"id": "ESP-09", "sub": "5. Concordancia de pronombres", "type": "single", "q": "Identifique la oración que respeta las reglas de concordancia pronominal ('se lo', 'les') de la Guía IMR:", "opts": ["El aviso oficial ya se los comunicamos a todos los solicitantes.", "El aviso oficial ya se lo comunicamos a todos los solicitantes.", "Le notificaron ayer a todos los aspirantes aceptados.", "El oficio no los entregó ayer la oficialía de partes."], "ans": [1], "ref": "Guía Español Escrito IMR, p. 14."}, {"id": "ESP-10", "sub": "6. Concordancia de sujeto y verbo", "type": "single", "q": "Elija la oración que presenta concordancia verbal correcta conforme a la Guía IMR:", "opts": ["Habían muchos expedientes pendientes de glosa en el consulado.", "Habemos varios aspirantes estudiando para el concurso del SEM.", "La Unión Europea está integrada por veintisiete países europeos y había muchos temas en su agenda.", "Se buscan a los responsables del extravío de las formas valoradas."], "ans": [2], "ref": "Guía Español Escrito IMR, p. 15."}, {"id": "ESP-11", "sub": "9.4 Numerales y sendos", "type": "single", "q": "¿Cuál de las siguientes oraciones emplea correctamente los numerales ordinales y los determinantes 'ambos' y 'sendos'?", "opts": ["Celebramos el ochentavo aniversario de la creación del organismo.", "Las dos agregadas recibieron sendos nombramientos al aprobar el curso.", "El consulado se ubica en el onceavo piso del edificio.", "Revisó dos expedientes y sendos le parecieron completos."], "ans": [1], "ref": "Guía Español Escrito IMR, p. 17."}, {"id": "ESP-12", "sub": "10. Locuciones prepositivas", "type": "single", "q": "Conforme a la Guía de Español Escrito del IMR, ¿cuál de las siguientes construcciones es normativamente correcta?", "opts": ["En base a los resultados obtenidos, se asignarán las plazas.", "De acuerdo al Secretario de Relaciones Exteriores, la convocatoria es paritaria.", "Con base en los datos oficiales y de acuerdo con la Subcomisión de Ingreso, se publicó la lista.", "Se actuará en base a lo dispuesto en el Reglamento."], "ans": [2], "ref": "Guía Español Escrito IMR, p. 18."}]}};
+
+// Configuración PeerJS con servidores STUN públicos para atravesar redes móviles/NAT
+const PEER_CONFIG = {
+  debug: 1,
+  config: {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:global.stun.twilio.com:3478" }
+    ]
+  }
+};
+
+let netMode = "local";
+let peer = null;
+let conn = null;
+let heartbeatInterval = null;
+let timerInterval = null;
+let timerSeconds = 0;
+let timerRunning = false;
+
+let gameState = {
+  started: false,
+  finished: false,
+  topicKey: "b2_lsem",
+  p1: { name: "Magdiel", role: "Administración", score: 0, answered: 0 },
+  p2: { name: "Benigno", role: "Asuntos Consulares", score: 0, answered: 0 },
+  turn: "p1",
+  questions: [],
+  currentIndex: 0,
+  // Guardamos el estado respondido de cada índice para poder ir "Anterior" y "Siguiente" sin perder respuestas
+  records: {}, // { idx: { selected: [...], checked: true/false, turn: "p1"|"p2" } }
+  flagged: [],
+  history: []
+};
+
+window.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  const sala = params.get("sala");
+  if (sala) {
+    switchLobbyTab("join");
+    document.getElementById("joinCodeInput").value = sala.toUpperCase();
+  }
+});
+
+function switchLobbyTab(tab) {
+  document.getElementById("tabHost").classList.toggle("active", tab === "host");
+  document.getElementById("tabJoin").classList.toggle("active", tab === "join");
+  document.getElementById("tabLocal").classList.toggle("active", tab === "local");
+  document.getElementById("panelHost").classList.toggle("hidden", tab !== "host");
+  document.getElementById("panelJoin").classList.toggle("hidden", tab !== "join");
+  document.getElementById("panelLocal").classList.toggle("hidden", tab !== "local");
+}
+
+function setConnStatus(status, text) {
+  const dot = document.getElementById("connDot");
+  dot.className = "dot " + status;
+  document.getElementById("connStatus").textContent = text;
+}
+
+function generateRoomCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "SEM";
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function buildQuestionList(topicKey, order) {
+  let list = [];
+  if (topicKey === "all_tronco") {
+    Object.values(QUESTIONS_DB).forEach(b => list.push(...b.questions));
+  } else {
+    list = [...QUESTIONS_DB[topicKey].questions];
+  }
+  if (order === "rand") {
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+  }
+  return list;
+}
+
+function startHeartbeat() {
+  clearInterval(heartbeatInterval);
+  heartbeatInterval = setInterval(() => {
+    if (conn && conn.open) {
+      try { conn.send({ type: "PING" }); } catch (e) {}
+    }
+  }, 4000);
+}
+
+// --- HOST ---
+function createRoom() {
+  const hostName = document.getElementById("hostName").value.trim() || "Magdiel";
+  const hostRole = document.getElementById("hostRole").value;
+  const code = generateRoomCode();
+  netMode = "host";
+
+  gameState.p1.name = hostName;
+  gameState.p1.role = hostRole;
+
+  document.getElementById("btnCreateRoom").disabled = true;
+  setConnStatus("", "Creando...");
+
+  peer = new Peer(code, PEER_CONFIG);
+  peer.on("open", (id) => {
+    document.getElementById("displayRoomCode").textContent = id;
+    document.getElementById("hostRoomBox").classList.remove("hidden");
+    setConnStatus("online", "Sala: " + id);
+  });
+
+  peer.on("connection", (connection) => {
+    conn = connection;
+    conn.on("open", () => {
+      setConnStatus("online", "En vivo · " + code);
+      startHeartbeat();
+    });
+    conn.on("data", (msg) => {
+      if (msg.type !== "PING") handleNetworkMessage(msg);
+    });
+    conn.on("close", () => {
+      setConnStatus("offline", "Desconectado");
+    });
+  });
+
+  peer.on("error", (err) => {
+    alert("Error de red (" + err.type + "). Si persiste en datos móviles, usen la pestaña '3. 1 Pantalla (Meet/Zoom)'.");
+    document.getElementById("btnCreateRoom").disabled = false;
+  });
+}
+
+function copyRoomCode() {
+  const code = document.getElementById("displayRoomCode").textContent;
+  navigator.clipboard.writeText(code);
+  alert("Código copiado: " + code);
+}
+
+function copyInviteLink() {
+  const code = document.getElementById("displayRoomCode").textContent;
+  const url = window.location.origin + window.location.pathname + "?sala=" + code;
+  navigator.clipboard.writeText(url);
+  alert("Link directo copiado:
+" + url);
+}
+
+function startSyncedQuiz() {
+  const topicKey = document.getElementById("topicSelect").value;
+  const order = document.getElementById("orderSelect").value;
+  const firstTurnPref = document.getElementById("firstTurnSelect").value;
+
+  const firstTurn = firstTurnPref === "random"
+    ? (Math.random() < 0.5 ? "p1" : "p2")
+    : (firstTurnPref === "host" ? "p1" : "p2");
+
+  gameState.topicKey = topicKey;
+  gameState.questions = buildQuestionList(topicKey, order);
+  gameState.currentIndex = 0;
+  gameState.turn = firstTurn;
+  gameState.records = { 0: { selected: [], checked: false, turn: firstTurn } };
+  gameState.flagged = [];
+  gameState.history = [];
+  gameState.p1.score = 0;
+  gameState.p1.answered = 0;
+  gameState.p2.score = 0;
+  gameState.p2.answered = 0;
+  gameState.started = true;
+  gameState.finished = false;
+
+  broadcastState();
+  renderQuiz();
+}
+
+// --- GUEST ---
+function joinRoom() {
+  const guestName = document.getElementById("guestName").value.trim() || "Benigno";
+  const guestRole = document.getElementById("guestRole").value;
+  const code = document.getElementById("joinCodeInput").value.trim().toUpperCase();
+
+  if (!code) {
+    alert("Escribe el código de sala.");
+    return;
+  }
+
+  netMode = "guest";
+  document.getElementById("btnJoinRoom").disabled = true;
+  document.getElementById("joinStatusText").textContent = "Conectando a " + code + "...";
+  setConnStatus("", "Conectando...");
+
+  peer = new Peer(PEER_CONFIG);
+  peer.on("open", () => {
+    conn = peer.connect(code, { reliable: true });
+    conn.on("open", () => {
+      setConnStatus("online", "En vivo · " + code);
+      document.getElementById("joinStatusText").textContent = "✅ Conectado. Esperando que el anfitrión inicie...";
+      startHeartbeat();
+      conn.send({ type: "HELLO", name: guestName, role: guestRole });
+    });
+    conn.on("data", (msg) => {
+      if (msg.type !== "PING") handleNetworkMessage(msg);
+    });
+    conn.on("close", () => {
+      setConnStatus("offline", "Desconectado");
+    });
+  });
+
+  peer.on("error", (err) => {
+    alert("No se pudo conectar a " + code + " (" + err.type + "). Verifica que el anfitrión no haya cerrado ni recargado su pestaña.");
+    document.getElementById("btnJoinRoom").disabled = false;
+  });
+}
+
+// --- LOCAL ---
+function startLocalQuiz() {
+  netMode = "local";
+  const p1Name = document.getElementById("localP1Name").value.trim() || "Magdiel";
+  const p2Name = document.getElementById("localP2Name").value.trim() || "Benigno";
+  const topicKey = document.getElementById("localTopicSelect").value;
+  const firstTurn = Math.random() < 0.5 ? "p1" : "p2";
+
+  gameState.p1 = { name: p1Name, role: "RTA", score: 0, answered: 0 };
+  gameState.p2 = { name: p2Name, role: "RTA", score: 0, answered: 0 };
+  gameState.topicKey = topicKey;
+  gameState.questions = buildQuestionList(topicKey, "seq");
+  gameState.currentIndex = 0;
+  gameState.turn = firstTurn;
+  gameState.records = { 0: { selected: [], checked: false, turn: firstTurn } };
+  gameState.flagged = [];
+  gameState.history = [];
+  gameState.started = true;
+  gameState.finished = false;
+
+  setConnStatus("online", "1 Pantalla");
+  renderQuiz();
+}
+
+// --- SYNC ---
+function handleNetworkMessage(msg) {
+  if (msg.type === "HELLO" && netMode === "host") {
+    gameState.p2.name = msg.name;
+    gameState.p2.role = msg.role;
+    document.getElementById("guestStatusText").textContent = "✅ Conectado: " + msg.name;
+    document.getElementById("btnStartSynced").disabled = false;
+    broadcastState();
+  } else if (msg.type === "STATE_SYNC") {
+    gameState = msg.state;
+    if (gameState.finished) renderSummary();
+    else if (gameState.started) renderQuiz();
+  } else if (msg.type === "ACTION" && netMode === "host") {
+    if (msg.action === "SELECT") applySelectOption(msg.optIdx);
+    else if (msg.action === "CHECK") applyCheckAnswer();
+    else if (msg.action === "NEXT") applyNextQuestion();
+    else if (msg.action === "PREV") applyPrevQuestion();
+    else if (msg.action === "FLAG") applyToggleFlag();
+  }
+}
+
+function broadcastState() {
+  if (netMode === "host" && conn && conn.open) {
+    conn.send({ type: "STATE_SYNC", state: gameState });
+  }
+}
+
+function getCurrentRecord() {
+  const idx = gameState.currentIndex;
+  if (!gameState.records[idx]) {
+    gameState.records[idx] = { selected: [], checked: false, turn: gameState.turn };
+  }
+  return gameState.records[idx];
+}
+
+function isMyTurn() {
+  const rec = getCurrentRecord();
+  if (netMode === "local") return true;
+  if (netMode === "host" && rec.turn === "p1") return true;
+  if (netMode === "guest" && rec.turn === "p2") return true;
+  return false;
+}
+
+// --- ACCIONES ---
+function selectOption(optIdx) {
+  const rec = getCurrentRecord();
+  if (!isMyTurn() || rec.checked) return;
+  if (netMode === "guest") conn.send({ type: "ACTION", action: "SELECT", optIdx });
+  else applySelectOption(optIdx);
+}
+
+function applySelectOption(optIdx) {
+  const q = gameState.questions[gameState.currentIndex];
+  const rec = getCurrentRecord();
+  if (rec.checked) return;
+
+  if (q.type === "single") {
+    rec.selected = [optIdx];
+  } else {
+    const pos = rec.selected.indexOf(optIdx);
+    if (pos >= 0) rec.selected.splice(pos, 1);
+    else {
+      if (rec.selected.length >= 2) rec.selected.shift();
+      rec.selected.push(optIdx);
+    }
+  }
+  broadcastState();
+  renderQuiz();
+}
+
+function checkAnswer() {
+  const rec = getCurrentRecord();
+  if (!isMyTurn() || rec.checked) return;
+  if (netMode === "guest") conn.send({ type: "ACTION", action: "CHECK" });
+  else applyCheckAnswer();
+}
+
+function applyCheckAnswer() {
+  const q = gameState.questions[gameState.currentIndex];
+  const rec = getCurrentRecord();
+  const reqCount = q.type === "double" ? 2 : 1;
+  if (rec.checked || rec.selected.length !== reqCount) return;
+
+  rec.checked = true;
+  const sortedSel = [...rec.selected].sort();
+  const sortedAns = [...q.ans].sort();
+  const isCorrect = sortedSel.length === sortedAns.length && sortedSel.every((v, i) => v === sortedAns[i]);
+
+  const activePlayer = rec.turn === "p1" ? gameState.p1 : gameState.p2;
+  activePlayer.answered += 1;
+  if (isCorrect) activePlayer.score += 1;
+
+  gameState.history.push({
+    id: q.id,
+    q: q.q,
+    player: activePlayer.name,
+    isCorrect,
+    ref: q.ref
+  });
+
+  broadcastState();
+  renderQuiz();
+}
+
+function prevQuestion() {
+  if (gameState.currentIndex <= 0) return;
+  if (netMode === "guest") conn.send({ type: "ACTION", action: "PREV" });
+  else applyPrevQuestion();
+}
+
+function applyPrevQuestion() {
+  if (gameState.currentIndex <= 0) return;
+  stopDebateTimer();
+  gameState.currentIndex -= 1;
+  const rec = getCurrentRecord();
+  gameState.turn = rec.turn;
+  broadcastState();
+  renderQuiz();
+}
+
+function nextQuestion() {
+  if (netMode === "guest") conn.send({ type: "ACTION", action: "NEXT" });
+  else applyNextQuestion();
+}
+
+function applyNextQuestion() {
+  stopDebateTimer();
+  if (gameState.currentIndex + 1 >= gameState.questions.length) {
+    gameState.finished = true;
+    broadcastState();
+    renderSummary();
+    return;
+  }
+  const prevRec = getCurrentRecord();
+  gameState.currentIndex += 1;
+  if (!gameState.records[gameState.currentIndex]) {
+    const nextTurn = prevRec.turn === "p1" ? "p2" : "p1";
+    gameState.records[gameState.currentIndex] = { selected: [], checked: false, turn: nextTurn };
+  }
+  gameState.turn = gameState.records[gameState.currentIndex].turn;
+  broadcastState();
+  renderQuiz();
+}
+
+function toggleFlag() {
+  if (netMode === "guest") conn.send({ type: "ACTION", action: "FLAG" });
+  else applyToggleFlag();
+}
+
+function applyToggleFlag() {
+  const q = gameState.questions[gameState.currentIndex];
+  const idx = gameState.flagged.indexOf(q.id);
+  if (idx >= 0) gameState.flagged.splice(idx, 1);
+  else gameState.flagged.push(q.id);
+  broadcastState();
+  renderQuiz();
+}
+
+// --- RENDER ---
+function renderQuiz() {
+  document.getElementById("lobbyView").classList.add("hidden");
+  document.getElementById("summaryView").classList.add("hidden");
+  document.getElementById("quizView").classList.remove("hidden");
+  document.getElementById("hudScoreboard").classList.remove("hidden");
+
+  const q = gameState.questions[gameState.currentIndex];
+  const rec = getCurrentRecord();
+  const total = gameState.questions.length;
+  const myTurn = isMyTurn();
+  const activePlayer = rec.turn === "p1" ? gameState.p1 : gameState.p2;
+
+  // HUD fijo superior
+  document.getElementById("hudP1Name").textContent = (rec.turn === "p1" ? "▶ " : "") + gameState.p1.name;
+  document.getElementById("hudP1Score").textContent = `${gameState.p1.score}/${gameState.p1.answered}`;
+  document.getElementById("hudP2Name").textContent = (rec.turn === "p2" ? "▶ " : "") + gameState.p2.name;
+  document.getElementById("hudP2Score").textContent = `${gameState.p2.score}/${gameState.p2.answered}`;
+
+  document.getElementById("hudP1").classList.toggle("active", rec.turn === "p1");
+  document.getElementById("hudP2").classList.toggle("active", rec.turn === "p2");
+  document.getElementById("hudProgress").textContent = `${gameState.currentIndex + 1} / ${total}`;
+
+  // Banner compacto de turno
+  const banner = document.getElementById("turnBanner");
+  const bannerText = document.getElementById("turnBannerText");
+  if (myTurn) {
+    banner.className = "turn-strip my-turn";
+    bannerText.textContent = `Turno de ${activePlayer.name}: justifica en voz alta y marca.`;
+  } else {
+    banner.className = "turn-strip spectator-turn";
+    bannerText.textContent = `Espectador · Responde ${activePlayer.name}`;
+  }
+
+  const isFlagged = gameState.flagged.includes(q.id);
+  document.getElementById("flagBadge").classList.toggle("hidden", !isFlagged);
+
+  // Pregunta
+  document.getElementById("qIdBadge").textContent = q.id;
+  document.getElementById("qSubBadge").textContent = q.sub;
+  document.getElementById("qDoubleBadge").classList.toggle("hidden", q.type !== "double");
+  document.getElementById("qText").textContent = q.q;
+
+  // Opciones
+  const letters = ["A", "B", "C", "D"];
+  const listEl = document.getElementById("optionsList");
+  listEl.innerHTML = "";
+
+  q.opts.forEach((optText, idx) => {
+    const btn = document.createElement("button");
+    btn.className = "opt-btn";
+    const isSel = rec.selected.includes(idx);
+    const isAns = q.ans.includes(idx);
+
+    if (rec.checked) {
+      if (isAns) btn.classList.add("correct");
+      else if (isSel && !isAns) btn.classList.add("wrong");
+    } else if (isSel) {
+      btn.classList.add("selected");
+    }
+
+    btn.disabled = !myTurn || rec.checked;
+    btn.onclick = () => selectOption(idx);
+    btn.innerHTML = `<span class="opt-letter">${letters[idx]}</span><span>${optText}</span>`;
+    listEl.appendChild(btn);
+  });
+
+  // Botones navegación
+  document.getElementById("btnPrev").disabled = gameState.currentIndex === 0;
+  const reqCount = q.type === "double" ? 2 : 1;
+  const btnCheck = document.getElementById("btnCheck");
+  const btnNext = document.getElementById("btnNext");
+
+  if (!rec.checked) {
+    btnCheck.classList.remove("hidden");
+    btnCheck.disabled = !myTurn || rec.selected.length !== reqCount;
+    btnNext.classList.add("hidden");
+  } else {
+    btnCheck.classList.add("hidden");
+    btnNext.classList.remove("hidden");
+    btnNext.disabled = false;
+  }
+
+  // Retroalimentación
+  const fbBox = document.getElementById("feedbackBox");
+  if (rec.checked) {
+    const sortedSel = [...rec.selected].sort();
+    const sortedAns = [...q.ans].sort();
+    const ok = sortedSel.length === sortedAns.length && sortedSel.every((v, i) => v === sortedAns[i]);
+    fbBox.classList.remove("hidden", "ok", "bad");
+    fbBox.classList.add(ok ? "ok" : "bad");
+    const ansLetters = sortedAns.map(i => letters[i]).join(" y ");
+    document.getElementById("feedbackTitle").textContent = ok
+      ? `✅ Correcta (${ansLetters})`
+      : `❌ Incorrecta · Respuesta: ${ansLetters}`;
+    document.getElementById("feedbackRef").textContent = q.ref;
+  } else {
+    fbBox.classList.add("hidden");
+  }
+}
+
+// --- TIMER ---
+function toggleDebateTimer() {
+  if (timerRunning) { stopDebateTimer(); return; }
+  timerSeconds = 180;
+  timerRunning = true;
+  document.getElementById("btnTimer").textContent = "Parar";
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    updateTimerDisplay();
+    if (timerSeconds <= 0) {
+      stopDebateTimer();
+      alert("Fin de los 3 minutos de debate.");
+    }
+  }, 1000);
+}
+
+function stopDebateTimer() {
+  timerRunning = false;
+  clearInterval(timerInterval);
+  timerSeconds = 0;
+  document.getElementById("debateTimer").textContent = "00:00";
+  document.getElementById("btnTimer").textContent = "3:00";
+}
+
+function updateTimerDisplay() {
+  const m = String(Math.floor(timerSeconds / 60)).padStart(2, "0");
+  const s = String(timerSeconds % 60).padStart(2, "0");
+  document.getElementById("debateTimer").textContent = `${m}:${s}`;
+}
+
+// --- RESUMEN ---
+function renderSummary() {
+  document.getElementById("lobbyView").classList.add("hidden");
+  document.getElementById("quizView").classList.add("hidden");
+  document.getElementById("summaryView").classList.remove("hidden");
+
+  const p1 = gameState.p1;
+  const p2 = gameState.p2;
+  document.getElementById("summaryStats").innerHTML = `
+    <div class="grid-2">
+      <div class="card" style="margin:0;">
+        <strong>${p1.name}</strong>: ${p1.score} / ${p1.answered} aciertos
+      </div>
+      <div class="card" style="margin:0;">
+        <strong>${p2.name}</strong>: ${p2.score} / ${p2.answered} aciertos
+      </div>
+    </div>
+  `;
+
+  document.getElementById("flaggedList").innerHTML = gameState.flagged.length > 0
+    ? `<strong>Marcadas para repaso (${gameState.flagged.length}):</strong> ` + gameState.flagged.join(", ")
+    : "No quedaron preguntas marcadas para repaso.";
+}
+
+function copySummaryWhatsApp() {
+  const p1 = gameState.p1;
+  const p2 = gameState.p2;
+  let txt = `*Bitácora Sesión Dúo SEM 2026*
+`;
+  txt += `• ${p1.name}: ${p1.score}/${p1.answered} aciertos
+`;
+  txt += `• ${p2.name}: ${p2.score}/${p2.answered} aciertos
+`;
+  if (gameState.flagged.length) txt += `• Marcadas para repaso: ${gameState.flagged.join(", ")}
+`;
+  const failed = gameState.history.filter(h => !h.isCorrect);
+  if (failed.length) {
+    txt += `
+*Reactivos fallados:*
+`;
+    failed.forEach(f => { txt += `- [${f.id}] (${f.player}): ${f.ref}
+`; });
+  }
+  navigator.clipboard.writeText(txt);
+  alert("Bitácora copiada para WhatsApp.");
+}
+</script>
+</body>
+</html>
